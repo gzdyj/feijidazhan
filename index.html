@@ -838,6 +838,71 @@ var Game = (function(){
       shakeIntensity=12;
     }
   }
+
+  function hitPlayer(){
+    if(!player || player.invuln>0 || shieldActive) return;
+    player.hp--;
+    player.invuln = 30;
+    if(shieldActive) shieldActive = false;
+    if(player.hp<=0){
+      lives--;
+      if(lives<=0){
+        gameOver = true;
+        endGame();
+        return;
+      }
+      revivePlayer();
+    }
+  }
+
+  function revivePlayer(){
+    player.hp = ships[currentShip].hp;
+    player.invuln = 60;
+    shieldActive = true;
+    setTimeout(function(){shieldActive=false;},2000);
+    spawnParticles(player.x,player.y,20,'#00d4ff',5);
+  }
+
+  function spawnPowerup(x,y){
+    var t = powerupTypes[Math.floor(Math.random()*powerupTypes.length)];
+    powerups.push({x:x,y:y,type:t,icon:t.icon,effect:t.effect,dur:t.dur,name:t.name});
+  }
+
+  function collectPowerup(p){
+    Audio.powerup();
+    UI.showNotif('✨ '+p.name+'！','');
+    if(p.effect==='weapon'){
+      weaponLevel = Math.min(weapons.length-1, weaponLevel+1);
+      setTimeout(function(){
+        weaponLevel = Math.max(0,weaponLevel-1);
+        UI.showNotif('💫 火力恢复','');
+      },5000);
+    }else if(p.effect==='shield'){
+      shieldActive = true;
+      setTimeout(function(){shieldActive=false;},5000);
+    }else if(p.effect==='life'){
+      lives = Math.min(maxLives, lives+1);
+    }else if(p.effect==='speed'){
+      if(player) player.speed *= 1.5;
+      setTimeout(function(){if(player) player.speed = ships[currentShip].speed;},3000);
+    }else if(p.effect==='coin'){
+      coins += 10;
+      UI.updateCoins();
+      Audio.coin();
+    }
+  }
+
+  function spawnParticles(x,y,n,color,speed){
+    for(var i=0;i<n;i++){
+      var a = Math.random()*Math.PI*2;
+      var sp = Math.random()*speed+1;
+      particles.push({
+        x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+        life:20+Math.random()*20,color:color,size:2+Math.random()*3
+      });
+    }
+  }
+
   function endGame(){
     running = false;
     Game.addToLeaderboard&&Game.addToLeaderboard('玩家',score,wave);
@@ -1410,40 +1475,6 @@ var UI = (function(){
     showNotif:showNotif, updateCoins:updateCoins,
     showDaily:showDaily, hideDaily:hideDaily,
     collectDaily:collectDaily, watchDaily:watchDaily
-  };
-})();
-
-
-var S = (function(){
-  var settings = {music:false,sfx:true,vibration:false,control:'mouse'};
-  function load(){
-    try{ var d = JSON.parse(localStorage.getItem('starbattle_settings')); if(d) Object.assign(settings,d); }catch(e){}
-  }
-  function save(){ try{ localStorage.setItem('starbattle_settings',JSON.stringify(settings)); }catch(e){} }
-  load();
-  return {
-    get music(){return settings.music;},
-    get sfx(){return settings.sfx;},
-    get vibration(){return settings.vibration;},
-    get control(){return settings.control;},
-    toggleMusic: function(){
-      settings.music=!settings.music;
-      document.getElementById('musicK').parentElement.classList.toggle('on',settings.music);
-      save();
-    },
-    toggleSfx: function(){
-      settings.sfx=!settings.sfx;
-      document.getElementById('sfxK').parentElement.classList.toggle('on',settings.sfx);
-      save();
-    },
-    toggleVib: function(){
-      settings.vibration=!settings.vibration;
-      document.getElementById('vibK').parentElement.classList.toggle('on',settings.vibration);
-      save();
-    },
-    setCtrl: function(v){
-      settings.control=v; save();
-    }
   };
 })();
 
