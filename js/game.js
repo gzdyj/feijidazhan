@@ -121,6 +121,14 @@ var Game = (function(){
   function getWeapon(){ return weapons[weaponLevel]||weapons[0]; }
 
   function update(){
+    // boss warning flash
+    for(var i=0;i<enemies.length;i++){
+      var e=enemies[i];
+      if(e.boss && e.warning>0 && e.warning%4<2){
+        ctx.fillStyle='rgba(255,0,50,0.08)';
+        ctx.fillRect(0,0,W,H);
+      }
+    }
     // player movement
     if(player){
       var spd = player.speed * (keys['Shift']?1.6:1);
@@ -178,12 +186,7 @@ var Game = (function(){
     for(var i=enemies.length-1;i>=0;i--){
       var e=enemies[i];
       if(e.hp<=0){ enemies.splice(i,1); continue; }
-      if(e.boss){
-        e.shootTimer=(e.shootTimer||0)+1;
-        if(e.shootTimer%30===0){
-          enemyFire(e);
-        }
-      }
+      if(e.boss){ enemyFire(e); }
       // move towards player
       var angle = Math.atan2(player.y-e.y, player.x-e.x);
       if(e.boss){
@@ -198,11 +201,12 @@ var Game = (function(){
       if(e.bullets){
         for(var k=e.bullets.length-1;k>=0;k--){
           var eb=e.bullets[k];
-          eb.y+=eb.vy||3;
-          if(eb.y>H||eb.y<-10||eb.x<-10||eb.x>W+10){ e.bullets.splice(k,1); continue; }
+          eb.x+=eb.vx||0; eb.y+=eb.vy||0;
+          if(eb.y>H||eb.y<-20||eb.x<-20||eb.x>W+20){ e.bullets.splice(k,1); continue; }
           if(player && player.hp>0){
             var ddx=eb.x-player.x, ddy=eb.y-player.y;
-            if(Math.sqrt(ddx*ddx+ddy*ddy)<22){
+            var r=(eb.sz||3)+16;
+            if(Math.sqrt(ddx*ddx+ddy*ddy)<r){
               hitPlayer();
               e.bullets.splice(k,1);
             }
@@ -341,23 +345,100 @@ var Game = (function(){
     waveEnemiesLeft--;
   }
 
+  
   function spawnBoss(){
-    var bossHp = 30 + wave*5;
+    var bossHp = 30 + wave * 5;
     enemies.push({
-      x:W/2, y:-60, r:40, hp:bossHp, maxHp:bossHp,
+      x:W/2, y:-60, r:45, hp:bossHp, maxHp:bossHp,
       speed:0.8, color:'#ff4757', score:2000,
-      boss:true, bullets:[], shootTimer:0
+      boss:true, bullets:[],
+      state:'enter', stateTimer:0, attackCount:0,
+      dir:1, phase:0, warning:0, vx:0, vy:0
     });
   }
 
+  
   function enemyFire(e){
-    if(!player) return;
-    var angle = Math.atan2(player.y-e.y, player.x-e.x);
-    if(!e.bullets) e.bullets=[];
-    e.bullets.push({x:e.x,y:e.y+20,vy:4,vx:Math.cos(angle)*1.5});
-    if(wave>10){
-      e.bullets.push({x:e.x-15,y:e.y+20,vy:4.5,vx:Math.cos(angle)*1.5-1.5});
-      e.bullets.push({x:e.x+15,y:e.y+20,vy:4.5,vx:Math.cos(angle)*1.5+1.5});
+    if(!player || !e.boss) return;
+    e.stateTimer = (e.stateTimer||0) + 1;
+    e.warning = Math.max(0, (e.warning||0) - 1);
+    e.x += (e.vx||0); e.y += (e.vy||0);
+    e.x = Math.max(60, Math.min(W-60, e.x));
+
+    if(e.state === 'enter'){
+      e.y += 0.8;
+      if(e.y >= 90){ e.state='pause'; e.stateTimer=0; }
+      return;
+    }
+    if(e.state === 'pause'){
+      e.x += Math.cos(e.stateTimer*0.025)*1.2;
+      if(e.stateTimer > 50){
+        e.phase = (e.phase+1)%4;
+        if(e.phase===0) e.state='aim';
+        else if(e.phase===1) e.state='spread';
+        else if(e.phase===2) e.state='cross';
+        else e.state='charge';
+        e.stateTimer=0; e.attackCount=0; e.warning=25;
+      }
+      return;
+    }
+    if(e.state === 'aim'){
+      e.x += Math.cos(e.stateTimer*0.03)*0.5;
+      if(e.stateTimer%10===0 && e.attackCount<5){
+        bossAimed(e);
+        e.attackCount++;
+      }
+      if(e.attackCount>=5 && e.stateTimer>60){
+        e.state='pause'; e.stateTimer=0;
+      }
+    }else if(e.state === 'spread'){
+      if(e.stateTimer%12===0 && e.attackCount<3){
+        bossSpread(e);
+        e.attackCount++;
+      }
+      if(e.attackCount>=3 && e.stateTimer>50){
+        e.state='pause'; e.stateTimer=0;
+      }
+    }else if(e.state === 'cross'){
+      if(e.stateTimer%15===0 && e.attackCount<2){
+        bossCross(e);
+        e.attackCount++;
+      }
+      if(e.attackCount>=2 && e.stateTimer>40){
+        e.state='pause'; e.stateTimer=0;
+      }
+    }else if(e.state === 'charge'){
+      if(e.attackCount===0){
+        var a=Math.atan2(player.y-e.y, player.x-e.x);
+        e.vx=Math.cos(a)*6; e.vy=Math.sin(a)*6;
+        e.attackCount=1;
+      }
+      if(e.stateTimer>25){
+        e.vx=0; e.vy=0;
+        if(e.y>90) e.vy=-3;
+        else{ e.state='pause'; e.stateTimer=0; e.attackCount=0; }
+      }
+    }
+  }
+
+  function bossAimed(e){
+    var a = Math.atan2(player.y-e.y, player.x-e.x);
+    e.bullets.push({x:e.x, y:e.y+25, vx:Math.cos(a)*4.5, vy:Math.sin(a)*4.5, sz:4, col:'#ff4757', glow:'#ff6b81'});
+    e.bullets.push({x:e.x-12, y:e.y+20, vx:Math.cos(a-0.15)*4, vy:Math.sin(a-0.15)*4, sz:3, col:'#ffa502', glow:'#ffbe76'});
+    e.bullets.push({x:e.x+12, y:e.y+20, vx:Math.cos(a+0.15)*4, vy:Math.sin(a+0.15)*4, sz:3, col:'#ffa502', glow:'#ffbe76'});
+  }
+
+  function bossSpread(e){
+    for(var i=0;i<12;i++){
+      var a = i*Math.PI/6 + e.stateTimer*0.05;
+      e.bullets.push({x:e.x, y:e.y, vx:Math.cos(a)*3.5, vy:Math.sin(a)*3.5, sz:3, col:'#a855f7', glow:'#c084fc'});
+    }
+  }
+
+  function bossCross(e){
+    var dirs = [0, Math.PI/4, Math.PI/2, 3*Math.PI/4, Math.PI, 5*Math.PI/4, 3*Math.PI/2, 7*Math.PI/4];
+    for(var i=0;i<dirs.length;i++){
+      e.bullets.push({x:e.x+Math.cos(dirs[i])*20, y:e.y+Math.sin(dirs[i])*20, vx:Math.cos(dirs[i])*3, vy:Math.sin(dirs[i])*3, sz:4, col:'#00d4ff', glow:'#00ff88'});
     }
   }
 
@@ -553,12 +634,20 @@ var Game = (function(){
       if(e.bullets){
         for(var k=0;k<e.bullets.length;k++){
           var eb=e.bullets[k];
-          ctx.shadowColor='#ff4757';
-          ctx.shadowBlur=6;
-          ctx.fillStyle='#ff4757';
+          ctx.shadowColor=eb.col||'#ff4757';
+          ctx.shadowBlur=eb.glow?15:6;
+          ctx.fillStyle=eb.col||'#ff4757';
           ctx.beginPath();
-          ctx.arc(eb.x,eb.y,4,0,Math.PI*2);
+          ctx.arc(eb.x,eb.y,eb.sz||4,0,Math.PI*2);
           ctx.fill();
+          if(eb.glow){
+            ctx.shadowBlur=25;
+            ctx.globalAlpha=0.25;
+            ctx.beginPath();
+            ctx.arc(eb.x,eb.y,(eb.sz||4)*2,0,Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha=1;
+          }
         }
       }
       ctx.shadowBlur = 0;

@@ -225,6 +225,28 @@ var UI = (function(){
     }
   }
 
+    redeem: function(){
+    var inp = document.getElementById('redeemInput');
+    if(!inp) return;
+    var code = inp.value.trim().toUpperCase();
+    var result = document.getElementById('redeemResult');
+    if(!result) return;
+    if(code==='GOLD999'){
+      Game.setCoins(Game.getCoins()+99999);
+      Game.save();
+      UI.updateCoins();
+      result.innerHTML='<span style="color:#ffd700;">✅ 兑换成功！+99999 🪙</span>';
+      Audio.coin();
+      UI.showNotif('🎉 兑换成功！获得 99999 金币！','');
+    }else if(code==='SKIPWAVE'){
+      if(Game.getWave) wave = Game.getWave();
+      result.innerHTML='<span style="color:#00d4ff;">✅ 兑换成功！跳波功能已激活</span>';
+    }else{
+      result.innerHTML='<span style="color:#ff4757;">❌ 无效兑换码</span>';
+    }
+    inp.value='';
+    setTimeout(function(){if(result)result.innerHTML='';},3000);
+  },
   return {
     showMenu:showMenu, showGameOver:showGameOver, showHud:showHud,
     showShop:showShop, hideShop:hideShop, switchTab:switchTab,
