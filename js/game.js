@@ -535,91 +535,25 @@ var Game = (function(){
     }
   }
 
-  function killEnemy(e, bulletIdx){
+    function killEnemy(e, bulletIdx){
     score += e.score||100;
-    kills++;
-    combo++;
-    comboTimer = 120;
-    var bonus = combo>5?Math.floor(combo/5)*0.5:0;
-    score += Math.floor(e.score*bonus);
-    spawnParticles(e.x,e.y,10,e.color||'#ff4757',4);
+    kills++; combo++; comboTimer=120;
+    var bonus=combo>5?Math.floor(combo/5)*0.5:0;
+    score+=Math.floor(e.score*bonus);
+    spawnParticles(e.x,e.y,10,e.color||"#ff4757",4);
+    shakeIntensity=3;
+    var bt=combo>5?" x"+combo:"";
+    addFloatingText(e.x,e.y-10,"+"+(e.score||100)+bt,e.color||"#fff");
+    addXP(Math.floor((e.score||100)/10)+1);
     if(Math.random()<0.15) spawnPowerup(e.x,e.y);
-    if(Math.random()<0.05){
-      coins += 5;
-      Audio.coin();
-    }
-    UI.updateCoins();
-    Audio.explosion();
+    if(Math.random()<0.08){coins+=5;Audio.coin();}
+    UI.updateCoins(); Audio.explosion();
     if(e.boss){
-      coins += 50 + Math.floor(wave/2)*5;
-      Audio.coin();
+      coins+=50+Math.floor(wave/2)*5; Audio.coin();
+      addFloatingText(W/2,H/2-80,"💥 BOSS! +"+(50+Math.floor(wave/2)*5)+"🪙","#ffd700");
+      shakeIntensity=12;
     }
   }
-
-  function hitPlayer(){
-    if(!player || player.invuln>0 || shieldActive) return;
-    player.hp--;
-    player.invuln = 30;
-    if(shieldActive) shieldActive = false;
-    if(player.hp<=0){
-      lives--;
-      if(lives<=0){
-        gameOver = true;
-        endGame();
-        return;
-      }
-      revivePlayer();
-    }
-  }
-
-  function revivePlayer(){
-    player.hp = ships[currentShip].hp;
-    player.invuln = 60;
-    shieldActive = true;
-    setTimeout(function(){shieldActive=false;},2000);
-    spawnParticles(player.x,player.y,20,'#00d4ff',5);
-  }
-
-  function spawnPowerup(x,y){
-    var t = powerupTypes[Math.floor(Math.random()*powerupTypes.length)];
-    powerups.push({x:x,y:y,type:t,icon:t.icon,effect:t.effect,dur:t.dur,name:t.name});
-  }
-
-  function collectPowerup(p){
-    Audio.powerup();
-    UI.showNotif('✨ '+p.name+'！','');
-    if(p.effect==='weapon'){
-      weaponLevel = Math.min(weapons.length-1, weaponLevel+1);
-      setTimeout(function(){
-        weaponLevel = Math.max(0,weaponLevel-1);
-        UI.showNotif('💫 火力恢复','');
-      },5000);
-    }else if(p.effect==='shield'){
-      shieldActive = true;
-      setTimeout(function(){shieldActive=false;},5000);
-    }else if(p.effect==='life'){
-      lives = Math.min(maxLives, lives+1);
-    }else if(p.effect==='speed'){
-      if(player) player.speed *= 1.5;
-      setTimeout(function(){if(player) player.speed = ships[currentShip].speed;},3000);
-    }else if(p.effect==='coin'){
-      coins += 10;
-      UI.updateCoins();
-      Audio.coin();
-    }
-  }
-
-  function spawnParticles(x,y,n,color,speed){
-    for(var i=0;i<n;i++){
-      var a = Math.random()*Math.PI*2;
-      var sp = Math.random()*speed+1;
-      particles.push({
-        x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
-        life:20+Math.random()*20,color:color,size:2+Math.random()*3
-      });
-    }
-  }
-
   function endGame(){
     running = false;
     Game.addToLeaderboard&&Game.addToLeaderboard('玩家',score,wave);

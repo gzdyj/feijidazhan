@@ -1,1 +1,1 @@
-feat: add XP system, active ability, new enemies, visual effects 
+fix: resolve syntax error in redeem function  

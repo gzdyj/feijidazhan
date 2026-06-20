@@ -1,8 +1,60 @@
 
-var S = (function(){...})();
+var S = (function(){
+  var s = {music:false,sfx:true,vibration:false,control:"mouse"};
+  function l(){ try{ var d = JSON.parse(localStorage.getItem("starbattle_settings")); if(d) Object.assign(s,d); }catch(e){} }
+  function sv(){ try{ localStorage.setItem("starbattle_settings",JSON.stringify(s)); }catch(e){} }
+  l();
+  return {
+    get music(){return s.music;},
+    get sfx(){return s.sfx;},
+    get vibration(){return s.vibration;},
+    get control(){return s.control;},
+    toggleMusic: function(){ s.music=!s.music; var el=document.getElementById("musicK"); if(el)el.parentElement.classList.toggle("on",s.music); sv(); },
+    toggleSfx: function(){ s.sfx=!s.sfx; var el=document.getElementById("sfxK"); if(el)el.parentElement.classList.toggle("on",s.sfx); sv(); },
+    toggleVib: function(){ s.vibration=!s.vibration; var el=document.getElementById("vibK"); if(el)el.parentElement.classList.toggle("on",s.vibration); sv(); },
+    setCtrl: function(v){ s.control=v; sv(); }
+  };
+})();
 
 
-var Audio = (function(){...})();
+var Audio = (function(){
+  var ctx = null;
+  function getCtx(){ if(!ctx) try{ ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} return ctx; }
+  function playTone(f,d,t,v){
+    var c = getCtx(); if(!c || !S.sfx) return;
+    var o = c.createOscillator();
+    var g = c.createGain();
+    o.type = t||"square";
+    o.frequency.value = f;
+    g.gain.setValueAtTime((v||0.15)*0.5, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d);
+    o.connect(g); g.connect(c.destination);
+    o.start(); o.stop(c.currentTime + d);
+  }
+  function noise(d,v){
+    var c = getCtx(); if(!c || !S.sfx) return;
+    var b = c.createBuffer(1, c.sampleRate*d, c.sampleRate);
+    var ch = b.getChannelData(0);
+    for(var i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+    var s = c.createBufferSource();
+    s.buffer = b;
+    var g = c.createGain();
+    g.gain.setValueAtTime((v||0.08), c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime+d);
+    s.connect(g); g.connect(c.destination);
+    s.start();
+  }
+  return {
+    shoot: function(){ playTone(800,0.08,"square",0.1); },
+    explosion: function(){ noise(0.3,0.12); playTone(100,0.2,"sawtooth",0.15); },
+    powerup: function(){ playTone(600,0.1,"sine",0.12); setTimeout(function(){playTone(900,0.15,"sine",0.12);},100); },
+    hit: function(){ playTone(300,0.06,"square",0.08); },
+    bossWarning: function(){ playTone(200,0.3,"square",0.1); setTimeout(function(){playTone(250,0.3,"square",0.1);},400); },
+    gameOver: function(){ playTone(400,0.15,"sawtooth",0.1); setTimeout(function(){playTone(300,0.15,"sawtooth",0.1);},200); setTimeout(function(){playTone(200,0.3,"sawtooth",0.1);},400); },
+    click: function(){ playTone(1000,0.04,"sine",0.06); },
+    coin: function(){ playTone(1200,0.06,"sine",0.1); setTimeout(function(){playTone(1500,0.08,"sine",0.1);},80); }
+  };
+})();
 
 var Game = (function(){
   var canvas, ctx, W, H;
@@ -540,91 +592,25 @@ var Game = (function(){
     }
   }
 
-  function killEnemy(e, bulletIdx){
+    function killEnemy(e, bulletIdx){
     score += e.score||100;
-    kills++;
-    combo++;
-    comboTimer = 120;
-    var bonus = combo>5?Math.floor(combo/5)*0.5:0;
-    score += Math.floor(e.score*bonus);
-    spawnParticles(e.x,e.y,10,e.color||'#ff4757',4);
+    kills++; combo++; comboTimer=120;
+    var bonus=combo>5?Math.floor(combo/5)*0.5:0;
+    score+=Math.floor(e.score*bonus);
+    spawnParticles(e.x,e.y,10,e.color||"#ff4757",4);
+    shakeIntensity=3;
+    var bt=combo>5?" x"+combo:"";
+    addFloatingText(e.x,e.y-10,"+"+(e.score||100)+bt,e.color||"#fff");
+    addXP(Math.floor((e.score||100)/10)+1);
     if(Math.random()<0.15) spawnPowerup(e.x,e.y);
-    if(Math.random()<0.05){
-      coins += 5;
-      Audio.coin();
-    }
-    UI.updateCoins();
-    Audio.explosion();
+    if(Math.random()<0.08){coins+=5;Audio.coin();}
+    UI.updateCoins(); Audio.explosion();
     if(e.boss){
-      coins += 50 + Math.floor(wave/2)*5;
-      Audio.coin();
+      coins+=50+Math.floor(wave/2)*5; Audio.coin();
+      addFloatingText(W/2,H/2-80,"💥 BOSS! +"+(50+Math.floor(wave/2)*5)+"🪙","#ffd700");
+      shakeIntensity=12;
     }
   }
-
-  function hitPlayer(){
-    if(!player || player.invuln>0 || shieldActive) return;
-    player.hp--;
-    player.invuln = 30;
-    if(shieldActive) shieldActive = false;
-    if(player.hp<=0){
-      lives--;
-      if(lives<=0){
-        gameOver = true;
-        endGame();
-        return;
-      }
-      revivePlayer();
-    }
-  }
-
-  function revivePlayer(){
-    player.hp = ships[currentShip].hp;
-    player.invuln = 60;
-    shieldActive = true;
-    setTimeout(function(){shieldActive=false;},2000);
-    spawnParticles(player.x,player.y,20,'#00d4ff',5);
-  }
-
-  function spawnPowerup(x,y){
-    var t = powerupTypes[Math.floor(Math.random()*powerupTypes.length)];
-    powerups.push({x:x,y:y,type:t,icon:t.icon,effect:t.effect,dur:t.dur,name:t.name});
-  }
-
-  function collectPowerup(p){
-    Audio.powerup();
-    UI.showNotif('✨ '+p.name+'！','');
-    if(p.effect==='weapon'){
-      weaponLevel = Math.min(weapons.length-1, weaponLevel+1);
-      setTimeout(function(){
-        weaponLevel = Math.max(0,weaponLevel-1);
-        UI.showNotif('💫 火力恢复','');
-      },5000);
-    }else if(p.effect==='shield'){
-      shieldActive = true;
-      setTimeout(function(){shieldActive=false;},5000);
-    }else if(p.effect==='life'){
-      lives = Math.min(maxLives, lives+1);
-    }else if(p.effect==='speed'){
-      if(player) player.speed *= 1.5;
-      setTimeout(function(){if(player) player.speed = ships[currentShip].speed;},3000);
-    }else if(p.effect==='coin'){
-      coins += 10;
-      UI.updateCoins();
-      Audio.coin();
-    }
-  }
-
-  function spawnParticles(x,y,n,color,speed){
-    for(var i=0;i<n;i++){
-      var a = Math.random()*Math.PI*2;
-      var sp = Math.random()*speed+1;
-      particles.push({
-        x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
-        life:20+Math.random()*20,color:color,size:2+Math.random()*3
-      });
-    }
-  }
-
   function endGame(){
     running = false;
     Game.addToLeaderboard&&Game.addToLeaderboard('玩家',score,wave);
@@ -866,7 +852,7 @@ var Game = (function(){
         dailyCollected = d.dailyCollected||false;
       }
     }catch(e){}
-    // moved to init()
+    UI.updateCoins();
   }
   function checkDaily(){
     try{
@@ -1159,7 +1145,7 @@ var UI = (function(){
     }
   }
 
-    redeem: function(){
+    function redeem(){
     var inp = document.getElementById('redeemInput');
     if(!inp) return;
     var code = inp.value.trim().toUpperCase();
@@ -1180,8 +1166,9 @@ var UI = (function(){
     }
     inp.value='';
     setTimeout(function(){if(result)result.innerHTML='';},3000);
-  },
+  }
   return {
+    redeem:redeem,
     showMenu:showMenu, showGameOver:showGameOver, showHud:showHud,
     showShop:showShop, hideShop:hideShop, switchTab:switchTab,
     renderShop:renderShop, buyShip:buyShip, equipShip:equipShip,

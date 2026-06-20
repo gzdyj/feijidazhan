@@ -225,7 +225,7 @@ var UI = (function(){
     }
   }
 
-    redeem: function(){
+    function redeem(){
     var inp = document.getElementById('redeemInput');
     if(!inp) return;
     var code = inp.value.trim().toUpperCase();
@@ -246,8 +246,9 @@ var UI = (function(){
     }
     inp.value='';
     setTimeout(function(){if(result)result.innerHTML='';},3000);
-  },
+  }
   return {
+    redeem:redeem,
     showMenu:showMenu, showGameOver:showGameOver, showHud:showHud,
     showShop:showShop, hideShop:hideShop, switchTab:switchTab,
     renderShop:renderShop, buyShip:buyShip, equipShip:equipShip,
