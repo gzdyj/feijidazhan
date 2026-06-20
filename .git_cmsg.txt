@@ -1,1 +1,1 @@
-feat: add redeem code system + improved boss mechanics  
+feat: add XP system, active ability, new enemies, visual effects 

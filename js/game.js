@@ -10,6 +10,10 @@ var Game = (function(){
   var weaponTypes=['single','dual','spread','laser','barrage'];
   var currentShip=0, ownedShips=[0], ownedWeapons=[0];
   var combo=0, comboTimer=0, reviveCount=0;
+  var xp=0, xpToNext=100, playerLevel=1;
+  var floatingTexts=[], shakeIntensity=0;
+  var abilityType="bomb", abilityCooldown=0, abilityMaxCd=900;
+  var levelBonuses={fireRate:1,speed:1,damage:1,extraLife:0,startShield:false};
 
   var ships = [
     {name:'先锋号',desc:'均衡型战机',color:'#00d4ff',speed:5,hp:3,price:0},
@@ -45,6 +49,38 @@ var Game = (function(){
   var highScore=0, maxWave=0, ks100=0, totalCoins=0;
   var dailyCollected=false;
 
+  function addFloatingText(x,y,text,col){
+    floatingTexts.push({x:x,y:y,text:text,col:col||"#fff",life:40,vy:-1.5});
+  }
+  function addXP(amt){
+    xp+=amt;
+    while(xp>=xpToNext){
+      xp-=xpToNext;
+      playerLevel++;
+      xpToNext=Math.floor(100*Math.pow(1.15,playerLevel-1));
+      if(playerLevel>=2) levelBonuses.fireRate=1.1;
+      if(playerLevel>=3) levelBonuses.startShield=true;
+      if(playerLevel>=4) levelBonuses.speed=1.1;
+      if(playerLevel>=5) levelBonuses.extraLife=1;
+      UI.showNotif("🎉 升级! 等级 "+playerLevel,"");
+    }
+  }
+  function useAbility(){
+    if(abilityCooldown>0||!player||!running) return;
+    for(var i=enemies.length-1;i>=0;i--){
+      var e2=enemies[i];
+      if(e2&&e2.hp>0){
+        spawnParticles(e2.x,e2.y,8,e2.color||"#ff4757",4);
+        kills++;
+      }
+    }
+    enemies=[];
+    spawnParticles(W/2,H/2,40,"#fff",10);
+    score+=100;
+    Audio.explosion();
+    shakeIntensity=8;
+    abilityCooldown=abilityMaxCd;
+  }
   function init(){
     canvas = document.getElementById('gameCanvas');
     ctx = canvas.getContext('2d');
@@ -90,7 +126,8 @@ var Game = (function(){
     },{passive:false});
     document.addEventListener('keydown',function(e){
       keys[e.key]=true;
-      if(e.key===' '||e.key==='Escape') e.preventDefault();
+      if(e.key===' ') useAbility();
+      if(e.key==='Escape') e.preventDefault();
     });
     document.addEventListener('keyup',function(e){ keys[e.key]=false; });
   }
@@ -102,7 +139,9 @@ var Game = (function(){
     document.getElementById('dailyScreen')&&document.getElementById('dailyScreen').classList.remove('active');
     document.getElementById('shopScreen')&&document.getElementById('shopScreen').classList.remove('active');
     document.getElementById('settingsScreen')&&document.getElementById('settingsScreen').classList.remove('active');
-    player = {x:W/2,y:H-80,w:30,h:36,hp:ships[currentShip].hp,maxHp:ships[currentShip].hp,speed:ships[currentShip].speed,invuln:0};
+    player = {x:W/2,y:H-80,w:30,h:36,hp:ships[currentShip].hp+(levelBonuses.extraLife||0),maxHp:ships[currentShip].hp+(levelBonuses.extraLife||0),speed:ships[currentShip].speed*(levelBonuses.speed||1),invuln:0};
+    xp=0; xpToNext=100; abilityCooldown=0;
+    shieldActive=levelBonuses.startShield||false;
     bullets = []; enemies = []; particles = []; powerups = [];
     score = 0; kills = 0; wave = 1; lives = 3; combo = 0; comboTimer = 0;
     waveEnemiesLeft = 5; bossActive = false; spawnTimer = 0; weaponLevel = 0;
@@ -189,7 +228,31 @@ var Game = (function(){
       if(e.boss){ enemyFire(e); }
       // move towards player
       var angle = Math.atan2(player.y-e.y, player.x-e.x);
-      if(e.boss){
+      // kamikaze - dive at player
+      if(e.type==='k'){
+        if(!e.kamiDive){e.kamiDive=0;}
+        e.kamiDive++;
+        if(e.kamiDive>40){
+          var da=Math.atan2(player.y-e.y,player.x-e.x);
+          e.x+=Math.cos(da)*6;
+          e.y+=Math.sin(da)*6;
+        }else{
+          e.x+=Math.cos(angle)*(e.speed||1.5);
+          e.y+=Math.sin(angle)*(e.speed||1.5);
+        }
+      }else if(e.type==='s'){
+        // sniper - stay at range, fire occasionally
+        var dist=Math.sqrt(Math.pow(player.x-e.x,2)+Math.pow(player.y-e.y,2));
+        if(dist<200){angle+=Math.PI;}
+        e.x+=Math.cos(angle)*(e.speed||0.5);
+        e.y+=Math.sin(angle)*(e.speed||0.5);
+        e.snipeTimer=(e.snipeTimer||0)+1;
+        if(e.snipeTimer%90===0){
+          if(!e.bullets)e.bullets=[];
+          var sa=Math.atan2(player.y-e.y,player.x-e.x);
+          e.bullets.push({x:e.x,y:e.y+15,vx:Math.cos(sa)*5,vy:Math.sin(sa)*5,sz:3,col:'#00d4ff',glow:'#00ff88'});
+        }
+      }else if(e.boss){
         e.x+=Math.cos(angle)*0.8;
         e.y+=Math.sin(angle)*0.3;
         e.x=Math.max(80,Math.min(W-80,e.x));
@@ -244,6 +307,16 @@ var Game = (function(){
         }
       }
     }
+    // floating text update
+    for(var fti=floatingTexts.length-1;fti>=0;fti--){
+      var ft=floatingTexts[fti];
+      ft.y+=ft.vy||-1.5;
+      ft.life--;
+      if(ft.life<=0) floatingTexts.splice(fti,1);
+    }
+    if(shakeIntensity>0) shakeIntensity*=0.85;
+    if(shakeIntensity<0.3) shakeIntensity=0;
+    if(abilityCooldown>0) abilityCooldown--;
     // particles
     for(var i=particles.length-1;i>=0;i--){
       var p=particles[i];
@@ -304,6 +377,23 @@ var Game = (function(){
     for(var i=0;i<lives;i++) h+='❤️';
     document.getElementById('livesDisp').textContent = h||'💀';
     document.getElementById('weaponDisp').textContent = '🔫 '+weaponNames[weaponLevel];
+    // XP bar
+    var xpPct=Math.min(100,Math.floor(xp/xpToNext*100));
+    var xpFill=document.getElementById('xpFill');
+    var xpText=document.getElementById('xpText');
+    if(xpFill)xpFill.style.width=xpPct+'%';
+    if(xpText)xpText.textContent='Lv '+playerLevel+' '+xpPct+'%';
+    // ability button
+    var abBtn=document.getElementById('abBtn');
+    if(abBtn){
+      if(abilityCooldown>0){
+        abBtn.textContent='⏳'+Math.ceil(abilityCooldown/60)+'s';
+        abBtn.style.background='rgba(255,100,100,0.3)';
+      }else{
+        abBtn.textContent='💣';
+        abBtn.style.background='';
+      }
+    }
   }
   var timer=0;
 
@@ -329,13 +419,16 @@ var Game = (function(){
 
   function spawnEnemy(){
     var types = [
-      {r:16,hp:1,speed:1.2,color:'#ff6b81',score:100},
-      {r:20,hp:2,speed:0.8,color:'#ffa502',score:200},
-      {r:14,hp:1,speed:2,color:'#ff4757',score:150}
+      {type:'n',r:16,hp:1,speed:1.2,color:'#ff6b81',score:100},
+      {type:'n',r:20,hp:2,speed:0.8,color:'#ffa502',score:200},
+      {type:'n',r:14,hp:1,speed:2.2,color:'#ff4757',score:150},
+      {type:'k',r:18,hp:1,speed:0.4,color:'#ff6348',score:200},
+      {type:'s',r:22,hp:3,speed:0.2,color:'#00d4ff',score:250}
     ];
     var t = types[Math.floor(Math.random()*types.length)];
-    if(wave>5 && Math.random()<0.3) t = types[1];
-    if(wave>10 && Math.random()<0.2) t = types[2];
+    if(wave>3&&Math.random()<0.2) t=types[3];
+    if(wave>7&&Math.random()<0.15) t=types[4];
+    if(wave>5&&Math.random()<0.25) t=types[1];
     enemies.push({
       x:Math.random()*(W-60)+30, y:-30,
       r:t.r, hp:t.hp+(Math.floor(wave/5)), maxHp:t.hp+(Math.floor(wave/5)),
@@ -674,6 +767,7 @@ var Game = (function(){
       ctx.arc(p.x,p.y,p.size*alpha,0,Math.PI*2);
       ctx.fill();
     }
+    if(shakeIntensity>0.5){ctx.save();ctx.translate((Math.random()-0.5)*shakeIntensity,(Math.random()-0.5)*shakeIntensity);}
     ctx.globalAlpha = 1;
     // player
     if(player && player.hp>0){
@@ -722,6 +816,19 @@ var Game = (function(){
       }
       ctx.shadowBlur = 0;
     }
+    // floating text draw
+    for(var fti=0;fti<floatingTexts.length;fti++){
+      var ft=floatingTexts[fti];
+      ctx.globalAlpha=ft.life/40;
+      ctx.fillStyle=ft.col||"#fff";
+      ctx.font="bold 16px sans-serif";
+      ctx.textAlign="center";
+      ctx.shadowColor=ft.col||"#fff";
+      ctx.shadowBlur=8;
+      ctx.fillText(ft.text,ft.x,ft.y);
+      ctx.shadowBlur=0;
+    }
+    ctx.globalAlpha=1;
     // combo display
     if(combo>5){
       ctx.fillStyle='rgba(255,215,0,0.8)';
