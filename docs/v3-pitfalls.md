@@ -41,6 +41,16 @@
 - **解决**：用 `Start-Process python -ArgumentList ... -WindowStyle Hidden` 后台启动，非阻塞
 - **经验**：Windows PowerShell 中启动长驻服务用 Start-Process 后台方式，避免阻塞工具命令
 
+### 踩坑-004：PowerShell 管道传 Docker 密码失败（v2 踩坑-007 复现，差点误判为 2FA）
+- **现象**：`'XmK=k#r*j8^Kga5' | docker login -u smithgz --password-stdin` 返回 `unauthorized: incorrect username or password`，验证密码长度值正确后仍失败
+- **误判过程**：第一次失败后怀疑是 Docker Hub 开启 2FA 导致密码不可用，建议用户改用 PAT；用户提示"之前可以，查错误文档"
+- **真因**：与 v2 踩坑-007/008 完全一致——PowerShell 管道传递字符串到 docker stdin 时有编码/换行问题，docker 收到的密码与实际不符
+- **解决**：改用 `docker login -u smithgz -p "password"`（CLI 会 WARNING 不安全，但能正确传递凭据）
+- **教训**：
+  1. 遇到认证失败应**先查历史踩坑文档**，而非凭"2FA 限制"等通用知识直接归因，避免误导用户
+  2. v2 已记录的坑不应在 v3 重复踩——本次若先读 v2-pitfalls.md 可一步到位
+  3. stdin 方式在 Windows PowerShell 不可靠，优先 `-p` 方式（或改用 cmd 子 shell / 将密码写入文件再 `< file` 重定向）
+
 ---
 
 ## 经验总结
