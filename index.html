@@ -36,6 +36,16 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
 .boss-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.6);letter-spacing:2px}
 .pause-btn{display:none;position:fixed;top:env(safe-area-inset-top,12px);right:12px;z-index:6;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);color:#fff;font-size:18px;cursor:pointer;align-items:center;justify-content:center;transition:all .2s}
 .pause-btn:hover{background:rgba(255,255,255,0.1)}
+.ab-btn{display:none;position:fixed;bottom:24px;right:20px;z-index:6;width:56px;height:56px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(0,212,255,0.2);backdrop-filter:blur(8px);color:#fff;font-size:26px;cursor:pointer;align-items:center;justify-content:center;transition:all .2s}
+.ab-btn:hover{background:rgba(0,212,255,0.35);transform:scale(1.05)}
+.hud-xp{margin-top:6px;width:100%;height:6px;background:rgba(255,255,255,0.08);border-radius:4px;position:relative;overflow:hidden}
+.xp-fill{height:100%;width:0;background:linear-gradient(90deg,#00d4ff,#7b2ff7);border-radius:4px;transition:width .3s}
+.xp-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.8)}
+.inventory-bar{display:flex;gap:8px;margin-top:8px;justify-content:center}
+.slot{width:44px;height:44px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;position:relative;transition:all .2s}
+.slot.empty{opacity:0.35}
+.slot.active:hover{background:rgba(0,212,255,0.2);transform:scale(1.05)}
+.slot .slot-key{position:absolute;top:-3px;right:-3px;font-size:9px;color:rgba(255,255,255,0.6);background:rgba(0,0,0,0.7);border-radius:4px;padding:0 3px}
 .coin{display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:700;color:#ffd700;cursor:pointer;padding:6px 12px;border-radius:20px;background:rgba(255,215,0,0.1);transition:all .2s}
 .coin:hover{background:rgba(255,215,0,0.2)}
 .vip{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:#ffd700;cursor:pointer;padding:6px 14px;border-radius:20px;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,165,0,0.1));border:1px solid rgba(255,215,0,0.3);transition:all .2s}
@@ -147,6 +157,7 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
   <div class="hud-xp" id="xpBar"><div class="xp-fill" id="xpFill"></div><span class="xp-text" id="xpText">Lv 1</span></div>
   <div class="hud-bottom">
     <div class="boss-bar" id="bossBar"><div class="boss-fill" id="bossFill"></div><span class="boss-text" id="bossText">BOSS</span></div>
+    <div class="inventory-bar" id="inventoryBar"></div>
   </div>
 </div>
 <button class="ab-btn" id="abBtn" onclick="Game.useAbility()">💣</button>
@@ -314,11 +325,22 @@ var Game = (function(){
     {name:'弹幕',desc:'全屏弹幕',price:3000,dmg:1.5,rate:6,type:'barrage'}
   ];
   var powerupTypes = [
-    {name:'双倍火力',icon:'🔥',effect:'weapon',dur:5000},
-    {name:'护盾',icon:'🛡️',effect:'shield',dur:5000},
-    {name:'生命',icon:'❤️',effect:'life',dur:0},
-    {name:'急速',icon:'⚡',effect:'speed',dur:3000},
-    {name:'金币',icon:'🪙',effect:'coin',dur:0}
+    // 即时道具 instant
+    {id:'life',name:'生命',icon:'❤️',category:'instant',effect:'life',dur:0,desc:'生命+1',color:'#ff4757'},
+    {id:'coin',name:'金币',icon:'🪙',category:'instant',effect:'coin',dur:0,desc:'+10金币',color:'#ffd700'},
+    {id:'recharge',name:'炸弹补给',icon:'💣',category:'instant',effect:'recharge',dur:0,desc:'重置必杀技冷却',color:'#ff6b81'},
+    // 持续增益 buff (dur 单位：帧, 60fps)
+    {id:'weapon',name:'双倍火力',icon:'🔥',category:'buff',effect:'weapon',dur:300,desc:'武器等级+1',color:'#ff6348'},
+    {id:'shield',name:'护盾',icon:'🛡️',category:'buff',effect:'shield',dur:300,desc:'无敌护盾',color:'#00ff88'},
+    {id:'speed',name:'急速',icon:'⚡',category:'buff',effect:'speed',dur:180,desc:'移速+50%',color:'#00d4ff'},
+    {id:'pierce',name:'穿透弹',icon:'🎯',category:'buff',effect:'pierce',dur:360,desc:'子弹穿透敌机',color:'#a855f7'},
+    {id:'double',name:'双倍分数',icon:'✨',category:'buff',effect:'double',dur:480,desc:'得分翻倍',color:'#ffd700'},
+    // 主动技能 active (拾取进入槽位)
+    {id:'emp',name:'EMP脉冲',icon:'💫',category:'active',effect:'emp',dur:0,desc:'瘫痪全场敌机3秒',color:'#00d4ff'},
+    {id:'slowmo',name:'时间减速',icon:'⏱️',category:'active',effect:'slowmo',dur:0,desc:'敌机减速50%持续5秒',color:'#7b2ff7'},
+    {id:'magnet',name:'磁铁',icon:'🧲',category:'active',effect:'magnet',dur:0,desc:'吸引掉落物持续8秒',color:'#ff6b81'},
+    {id:'nuke',name:'核弹',icon:'☢️',category:'active',effect:'nuke',dur:0,desc:'全场敌机大量伤害',color:'#ff4757'},
+    {id:'clone',name:'分身',icon:'👥',category:'active',effect:'clone',dur:0,desc:'生成2分身协助射击8秒',color:'#00ff88'}
   ];
   var achievements = [
     {id:'first',name:'初次飞行',desc:'完成第一局游戏',icon:'🚀',check:function(){return true;}},
@@ -332,6 +354,10 @@ var Game = (function(){
   ];
   var highScore=0, maxWave=0, ks100=0, totalCoins=0;
   var dailyCollected=false;
+  var boughtLife=false, boughtShield=false, boughtBoost=false;
+  var activeEffects = {};
+  var inventory = [null, null, null];
+  var clones = [];
 
   function addFloatingText(x,y,text,col){
     floatingTexts.push({x:x,y:y,text:text,col:col||"#fff",life:40,vy:-1.5});
@@ -411,6 +437,9 @@ var Game = (function(){
     document.addEventListener('keydown',function(e){
       keys[e.key]=true;
       if(e.key===' ') useAbility();
+      if(e.key==='1') useInventory(0);
+      if(e.key==='2') useInventory(1);
+      if(e.key==='3') useInventory(2);
       if(e.key==='Escape') e.preventDefault();
     });
     document.addEventListener('keyup',function(e){ keys[e.key]=false; });
@@ -423,13 +452,14 @@ var Game = (function(){
     document.getElementById('dailyScreen')&&document.getElementById('dailyScreen').classList.remove('active');
     document.getElementById('shopScreen')&&document.getElementById('shopScreen').classList.remove('active');
     document.getElementById('settingsScreen')&&document.getElementById('settingsScreen').classList.remove('active');
-    player = {x:W/2,y:H-80,w:30,h:36,hp:ships[currentShip].hp+(levelBonuses.extraLife||0),maxHp:ships[currentShip].hp+(levelBonuses.extraLife||0),speed:ships[currentShip].speed*(levelBonuses.speed||1),invuln:0};
+    var initShield = (levelBonuses.startShield||false) || boughtShield;
+    player = {x:W/2,y:H-80,w:30,h:36,hp:ships[currentShip].hp+(levelBonuses.extraLife||0),maxHp:ships[currentShip].hp+(levelBonuses.extraLife||0),speed:ships[currentShip].speed*(levelBonuses.speed||1)*(boughtBoost?1.5:1),invuln:0};
     xp=0; xpToNext=100; abilityCooldown=0;
-    shieldActive=levelBonuses.startShield||false;
     bullets = []; enemies = []; particles = []; powerups = [];
-    score = 0; kills = 0; wave = 1; lives = 3; combo = 0; comboTimer = 0;
+    activeEffects = {}; inventory = [null,null,null]; clones = [];
+    score = 0; kills = 0; wave = 1; lives = 3+(boughtLife?2:0); combo = 0; comboTimer = 0;
     waveEnemiesLeft = 5; bossActive = false; spawnTimer = 0; weaponLevel = 0;
-    shieldActive = false; gameOver = false; running = true; paused = false;
+    shieldActive = initShield; gameOver = false; running = true; paused = false;
     UI.showHud();
     Audio.click();
   }
@@ -500,8 +530,12 @@ var Game = (function(){
           if(e.hp<=0){
             killEnemy(e,i);
           }
-          bullets.splice(i,1);
-          break;
+          if(activeEffects.pierce>0){
+            // 穿透弹：不删除子弹，继续检测下一个敌机
+          }else{
+            bullets.splice(i,1);
+            break;
+          }
         }
       }
     }
@@ -509,8 +543,9 @@ var Game = (function(){
     for(var i=enemies.length-1;i>=0;i--){
       var e=enemies[i];
       if(e.hp<=0){ enemies.splice(i,1); continue; }
-      if(e.boss){ enemyFire(e); }
-      // move towards player
+      if(e.boss && !activeEffects.emp){ enemyFire(e); }
+      // move towards player (emp 冻结, slowmo 隔帧减速)
+      if(!activeEffects.emp && (!(activeEffects.slowmo>0) || timer%2===0)){
       var angle = Math.atan2(player.y-e.y, player.x-e.x);
       // kamikaze - dive at player
       if(e.type==='k'){
@@ -543,6 +578,7 @@ var Game = (function(){
       }else{
         e.x+=Math.cos(angle)*(e.speed||1.5);
         e.y+=Math.sin(angle)*(e.speed||1.5);
+      }
       }
       // enemy bullet collision with player
       if(e.bullets){
@@ -581,7 +617,13 @@ var Game = (function(){
     // powerups
     for(var i=powerups.length-1;i>=0;i--){
       var p=powerups[i];
-      p.y+=1.5;
+      if(activeEffects.magnet>0 && player && player.hp>0){
+        var mdx=player.x-p.x, mdy=player.y-p.y;
+        var md=Math.sqrt(mdx*mdx+mdy*mdy);
+        if(md>1){ p.x+=(mdx/md)*8; p.y+=(mdy/md)*8; }
+      }else{
+        p.y+=1.5;
+      }
       if(p.y>H+20){ powerups.splice(i,1); continue; }
       if(player && player.hp>0){
         var dx = p.x-player.x, dy = p.y-player.y;
@@ -612,6 +654,26 @@ var Game = (function(){
     // combo timer
     if(comboTimer>0) comboTimer--;
     else combo=0;
+    // activeEffects 递减与过期处理
+    for(var ek in activeEffects){
+      if(activeEffects[ek]>0){
+        activeEffects[ek]--;
+        if(activeEffects[ek]<=0){
+          delete activeEffects[ek];
+          onEffectEnd(ek);
+        }
+      }
+    }
+    // clone fire
+    if(activeEffects.clone>0 && clones.length>0 && player && player.hp>0){
+      for(var ci=0;ci<clones.length;ci++){
+        clones[ci].fireTimer++;
+        if(clones[ci].fireTimer%10===0){
+          bullets.push({x:player.x+clones[ci].offset,y:player.y-10,speed:9,dmg:1,vx:0});
+          Audio.shoot();
+        }
+      }
+    } else if(!activeEffects.clone){ clones=[]; }
     // spawning
     if(!bossActive){
       spawnTimer++;
@@ -820,15 +882,17 @@ var Game = (function(){
   }
 
     function killEnemy(e, bulletIdx){
-    score += e.score||100;
+    var baseScore = e.score||100;
+    var dbl = activeEffects.double>0 ? 2 : 1;
+    score += baseScore * dbl;
     kills++; combo++; comboTimer=120;
     var bonus=combo>5?Math.floor(combo/5)*0.5:0;
-    score+=Math.floor(e.score*bonus);
+    score+=Math.floor(baseScore*bonus*dbl);
     spawnParticles(e.x,e.y,10,e.color||"#ff4757",4);
     shakeIntensity=3;
     var bt=combo>5?" x"+combo:"";
-    addFloatingText(e.x,e.y-10,"+"+(e.score||100)+bt,e.color||"#fff");
-    addXP(Math.floor((e.score||100)/10)+1);
+    addFloatingText(e.x,e.y-10,"+"+(baseScore*dbl)+bt,e.color||"#fff");
+    addXP(Math.floor(baseScore/10)+1);
     if(Math.random()<0.15) spawnPowerup(e.x,e.y);
     if(Math.random()<0.08){coins+=5;Audio.coin();}
     UI.updateCoins(); Audio.explosion();
@@ -864,31 +928,124 @@ var Game = (function(){
   }
 
   function spawnPowerup(x,y){
-    var t = powerupTypes[Math.floor(Math.random()*powerupTypes.length)];
-    powerups.push({x:x,y:y,type:t,icon:t.icon,effect:t.effect,dur:t.dur,name:t.name});
+    var r = Math.random();
+    var pool;
+    if(r<0.5) pool = powerupTypes.filter(function(t){return t.category==='instant';});
+    else if(r<0.85) pool = powerupTypes.filter(function(t){return t.category==='buff';});
+    else pool = powerupTypes.filter(function(t){return t.category==='active';});
+    var t = pool[Math.floor(Math.random()*pool.length)];
+    powerups.push({x:x,y:y,id:t.id,icon:t.icon,category:t.category,effect:t.effect,dur:t.dur,name:t.name,color:t.color});
   }
 
   function collectPowerup(p){
     Audio.powerup();
-    UI.showNotif('✨ '+p.name+'！','');
-    if(p.effect==='weapon'){
-      weaponLevel = Math.min(weapons.length-1, weaponLevel+1);
-      setTimeout(function(){
-        weaponLevel = Math.max(0,weaponLevel-1);
-        UI.showNotif('💫 火力恢复','');
-      },5000);
-    }else if(p.effect==='shield'){
-      shieldActive = true;
-      setTimeout(function(){shieldActive=false;},5000);
-    }else if(p.effect==='life'){
+    if(p.category==='instant'){
+      UI.showNotif('✨ '+p.name+'！','');
+      applyInstant(p.effect);
+    }else if(p.category==='buff'){
+      activeEffects[p.effect] = p.dur;
+      if(p.effect==='weapon'){
+        weaponLevel = Math.min(weapons.length-1, weaponLevel+1);
+      }else if(p.effect==='shield'){
+        shieldActive = true;
+      }else if(p.effect==='speed'){
+        if(player) player.speed = ships[currentShip].speed*(levelBonuses.speed||1)*1.5;
+      }
+      UI.showNotif('✨ '+p.name+' '+Math.round(p.dur/60)+'秒！','');
+    }else if(p.category==='active'){
+      addToInventory(p);
+    }
+  }
+
+  function applyInstant(effect){
+    if(effect==='life'){
       lives = Math.min(maxLives, lives+1);
-    }else if(p.effect==='speed'){
-      if(player) player.speed *= 1.5;
-      setTimeout(function(){if(player) player.speed = ships[currentShip].speed;},3000);
-    }else if(p.effect==='coin'){
+    }else if(effect==='coin'){
       coins += 10;
       UI.updateCoins();
       Audio.coin();
+    }else if(effect==='recharge'){
+      abilityCooldown = 0;
+      UI.showNotif('💣 必杀技冷却重置！','');
+    }
+  }
+
+  function onEffectEnd(effect){
+    if(effect==='weapon'){
+      weaponLevel = Math.max(0, weaponLevel-1);
+      UI.showNotif('💫 火力恢复','');
+    }else if(effect==='shield'){
+      shieldActive = false;
+    }else if(effect==='speed'){
+      if(player) player.speed = ships[currentShip].speed*(levelBonuses.speed||1);
+    }
+  }
+
+  function addToInventory(item){
+    for(var i=0;i<inventory.length;i++){
+      if(!inventory[i]){
+        inventory[i] = item;
+        UI.showNotif('🎒 '+item.name+' 已装入槽位 '+(i+1),'');
+        UI.renderInventory();
+        return;
+      }
+    }
+    useInventory(0);
+    inventory[0] = item;
+    UI.showNotif('🎒 槽位满，自动使用旧道具',''+item.name+' 已装入','');
+    UI.renderInventory();
+  }
+
+  function useInventory(slot){
+    if(!inventory[slot]) return;
+    var item = inventory[slot];
+    inventory[slot] = null;
+    applyActive(item.effect, item);
+    UI.renderInventory();
+  }
+
+  function applyActive(effect, item){
+    UI.showNotif('✨ 使用 '+item.name+'！','');
+    if(effect==='emp'){
+      activeEffects.emp = 180;
+    }else if(effect==='slowmo'){
+      activeEffects.slowmo = 300;
+    }else if(effect==='magnet'){
+      activeEffects.magnet = 480;
+    }else if(effect==='nuke'){
+      doNuke();
+    }else if(effect==='clone'){
+      activeEffects.clone = 480;
+      spawnClones();
+    }
+  }
+
+  function doNuke(){
+    for(var i=enemies.length-1;i>=0;i--){
+      var e=enemies[i];
+      if(e&&e.hp>0){
+        if(e.boss){
+          e.hp -= Math.floor(e.maxHp*0.5);
+          spawnParticles(e.x,e.y,15,e.color||"#ff4757",5);
+          if(e.hp<=0) killEnemy(e);
+        }else{
+          spawnParticles(e.x,e.y,10,e.color||"#ff4757",4);
+          kills++;
+          score += e.score||100;
+          enemies.splice(i,1);
+        }
+      }
+    }
+    spawnParticles(W/2,H/2,40,"#ff4757",10);
+    Audio.explosion();
+    shakeIntensity = 12;
+  }
+
+  function spawnClones(){
+    clones = [];
+    if(!player) return;
+    for(var i=0;i<2;i++){
+      clones.push({offset:(i===0?-40:40), fireTimer:i*6});
     }
   }
 
@@ -1099,6 +1256,27 @@ var Game = (function(){
       }
       ctx.shadowBlur = 0;
     }
+    // draw clones
+    if(activeEffects.clone>0 && clones.length>0 && player && player.hp>0){
+      ctx.globalAlpha = 0.55;
+      for(var ci=0;ci<clones.length;ci++){
+        var cx = player.x + clones[ci].offset, cy = player.y;
+        ctx.fillStyle = '#00ff88';
+        ctx.shadowColor = '#00ff88';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(cx,cy-18);
+        ctx.lineTo(cx-13,cy+8);
+        ctx.lineTo(cx-8,cy+15);
+        ctx.lineTo(cx,cy+10);
+        ctx.lineTo(cx+8,cy+15);
+        ctx.lineTo(cx+13,cy+8);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+    }
     // floating text draw
     for(var fti=0;fti<floatingTexts.length;fti++){
       var ft=floatingTexts[fti];
@@ -1128,7 +1306,8 @@ var Game = (function(){
         coins:coins, highScore:highScore, maxWave:maxWave,
         totalCoins:totalCoins, ks100:kills,
         ownedShips:ownedShips, ownedWeapons:ownedWeapons,
-        dailyCollected:dailyCollected
+        dailyCollected:dailyCollected,
+        boughtLife:boughtLife, boughtShield:boughtShield, boughtBoost:boughtBoost
       };
       localStorage.setItem('starbattle',JSON.stringify(d));
     }catch(e){}
@@ -1142,6 +1321,9 @@ var Game = (function(){
         ks100 = d.ks100||0; ownedShips = d.ownedShips||[0];
         ownedWeapons = d.ownedWeapons||[0];
         dailyCollected = d.dailyCollected||false;
+        boughtLife = d.boughtLife||false;
+        boughtShield = d.boughtShield||false;
+        boughtBoost = d.boughtBoost||false;
       }
     }catch(e){}
     UI.updateCoins();
@@ -1171,6 +1353,7 @@ var Game = (function(){
 
   return {
     init: init, startGame: startGame, togglePause: togglePause, quit: quit,
+    useAbility: useAbility,
     getWave: function(){return wave;},
     getScore: function(){return score;},
     getKills: function(){return kills;},
@@ -1192,6 +1375,20 @@ var Game = (function(){
     setDailyCollected: function(v){dailyCollected=v;},
     collectDaily: collectDaily,
     save: save,
+    setBought: function(type,val){
+      if(type==='life') boughtLife=val;
+      else if(type==='shield') boughtShield=val;
+      else if(type==='boost') boughtBoost=val;
+    },
+    getBought: function(type){
+      if(type==='life') return boughtLife;
+      if(type==='shield') return boughtShield;
+      if(type==='boost') return boughtBoost;
+      return false;
+    },
+    getInventory: function(){return inventory;},
+    useInventory: useInventory,
+    getActiveEffects: function(){return activeEffects;},
     // for leaderboard
     leaderboard: [],
     addToLeaderboard: function(name,score,wave){
@@ -1225,6 +1422,8 @@ var UI = (function(){
     hideAll();
     document.getElementById('gameHud').style.display = 'block';
     document.getElementById('pauseBtn').style.display = 'flex';
+    document.getElementById('abBtn').style.display = 'flex';
+    renderInventory();
   }
   function showShop(){
     hideAll();
@@ -1268,10 +1467,11 @@ var UI = (function(){
           (owned?'已拥有':(coins>=w.price?'🪙 '+w.price:'🔒 '+w.price))+'</button></div>';
       });
     }else if(tab==='道具'){
+      var li=Game.getBought('life'), sh=Game.getBought('shield'), bo=Game.getBought('boost');
       items = [
-        '<div class="item-card"><div class="icon">❤️</div><div class="info"><div class="name">额外生命</div><div class="desc">开局+2生命</div></div><button class="buy-btn buy" onclick="UI.buyLife()">🪙 200</button></div>',
-        '<div class="item-card"><div class="icon">🛡️</div><div class="info"><div class="name">初始护盾</div><div class="desc">开局带护盾</div></div><button class="buy-btn buy" onclick="UI.buyShield()">🪙 150</button></div>',
-        '<div class="item-card"><div class="icon">⚡</div><div class="info"><div class="name">开局加速</div><div class="desc">开局速度+50%</div></div><button class="buy-btn buy" onclick="UI.buyBoost()">🪙 100</button></div>'
+        '<div class="item-card"><div class="icon">❤️</div><div class="info"><div class="name">额外生命</div><div class="desc">开局+2生命</div>'+(li?'<div class="owned">✅ 已拥有</div>':'')+'</div><button class="buy-btn '+(li?'owned':'buy')+'" onclick="UI.buyLife()">'+(li?'已拥有':'🪙 200')+'</button></div>',
+        '<div class="item-card"><div class="icon">🛡️</div><div class="info"><div class="name">初始护盾</div><div class="desc">开局带护盾</div>'+(sh?'<div class="owned">✅ 已拥有</div>':'')+'</div><button class="buy-btn '+(sh?'owned':'buy')+'" onclick="UI.buyShield()">'+(sh?'已拥有':'🪙 150')+'</button></div>',
+        '<div class="item-card"><div class="icon">⚡</div><div class="info"><div class="name">开局加速</div><div class="desc">开局速度+50%</div>'+(bo?'<div class="owned">✅ 已拥有</div>':'')+'</div><button class="buy-btn '+(bo?'owned':'buy')+'" onclick="UI.buyBoost()">'+(bo?'已拥有':'🪙 100')+'</button></div>'
       ];
     }else if(tab==='VIP'){
       items = [
@@ -1319,24 +1519,30 @@ var UI = (function(){
     }
   }
   function buyLife(){
+    if(Game.getBought('life')){ showNotif('❤️ 已拥有，无需重复购买',''); return; }
     if(Game.getCoins()>=200){
       Game.setCoins(Game.getCoins()-200);
+      Game.setBought('life',true);
       Game.save(); updateCoins(); Audio.coin();
-      showNotif('❤️ 已购买额外生命','');
+      showNotif('❤️ 已购买额外生命，下局开局+2生命','');
     }
   }
   function buyShield(){
+    if(Game.getBought('shield')){ showNotif('🛡️ 已拥有，无需重复购买',''); return; }
     if(Game.getCoins()>=150){
       Game.setCoins(Game.getCoins()-150);
+      Game.setBought('shield',true);
       Game.save(); updateCoins(); Audio.coin();
-      showNotif('🛡️ 已购买初始护盾','');
+      showNotif('🛡️ 已购买初始护盾，下局开局带护盾','');
     }
   }
   function buyBoost(){
+    if(Game.getBought('boost')){ showNotif('⚡ 已拥有，无需重复购买',''); return; }
     if(Game.getCoins()>=100){
       Game.setCoins(Game.getCoins()-100);
+      Game.setBought('boost',true);
       Game.save(); updateCoins(); Audio.coin();
-      showNotif('⚡ 已购买开局加速','');
+      showNotif('⚡ 已购买开局加速，下局开局速度+50%','');
     }
   }
   function buyVIP(){ showNotif('👑 模拟：VIP 订阅成功！（实际需接入支付）',''); }
@@ -1409,10 +1615,25 @@ var UI = (function(){
       if(el) el.textContent = Game.getCoins();
     });
   }
+  function renderInventory(){
+    var bar = document.getElementById('inventoryBar');
+    if(!bar) return;
+    var inv = Game.getInventory();
+    var html = '';
+    for(var i=0;i<inv.length;i++){
+      if(inv[i]){
+        html += '<div class="slot active" onclick="Game.useInventory('+i+')" style="border-color:'+(inv[i].color||'#00d4ff')+'"><span class="slot-key">'+(i+1)+'</span>'+inv[i].icon+'</div>';
+      }else{
+        html += '<div class="slot empty"><span class="slot-key">'+(i+1)+'</span>·</div>';
+      }
+    }
+    bar.innerHTML = html;
+  }
   function hideAll(){
     document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
     document.getElementById('gameHud').style.display = 'none';
     document.getElementById('pauseBtn').style.display = 'none';
+    document.getElementById('abBtn').style.display = 'none';
     document.getElementById('bossBar').style.display = 'none';
   }
   function showDaily(){
@@ -1472,7 +1693,7 @@ var UI = (function(){
     showAchv:showAchv, hideAchv:hideAchv,
     showLb:showLb, hideLb:hideLb,
     renderAchievements:renderAchievements, renderLeaderboard:renderLeaderboard,
-    showNotif:showNotif, updateCoins:updateCoins,
+    showNotif:showNotif, updateCoins:updateCoins, renderInventory:renderInventory,
     showDaily:showDaily, hideDaily:hideDaily,
     collectDaily:collectDaily, watchDaily:watchDaily
   };
