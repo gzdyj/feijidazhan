@@ -16,6 +16,7 @@ iife.html
 window_test.html
 onlyui.html
 sec*.html
+.playwright-cli/
 tail.html
 e*.html
 c*.html

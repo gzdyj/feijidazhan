@@ -66,3 +66,14 @@
 - **解决**：等待几秒让敌机生成后再使用核弹，击杀数 5→16 验证通过
 - **经验**：测试范围伤害类道具时，要确保测试环境中有足够目标
 
+### 踩坑-007：PowerShell 管道传 docker 密码失败
+- **现象**：`'password' | docker login -u user --password-stdin` 返回 "incorrect username or password"，但密码内容验证正确
+- **原因**：PowerShell 管道传递字符串时可能附加换行符或编码问题，导致 docker 收到的密码与实际不符
+- **解决**：改用 `docker login -u user -p "password"`（虽然 CLI 警告不安全，但能正确传递）
+- **经验**：Windows PowerShell 中 stdin 管道传密码不可靠，优先用 `-p` 方式或用 cmd 子shell
+
+### 踩坑-008：Docker Hub 登录方式选择
+- **现象**：stdin 方式认证失败，`-p` 方式成功
+- **结论**：问题在 PowerShell 管道编码，非密码本身错误
+- **经验**：如遇 stdin 认证失败，先验证密码变量内容（长度+值），再尝试 `-p` 方式排除传输问题
+
