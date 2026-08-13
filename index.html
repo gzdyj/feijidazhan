@@ -179,6 +179,12 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh;touch-
       <option value="keyboard">键盘方向键</option>
       <option value="touch">触屏拖拽</option>
     </select></div>
+    <div class="setting"><label>画质</label><select id="qualitySel" onchange="S.setQuality(this.value)" class="sel">
+      <option value="auto">自动</option>
+      <option value="high">高</option>
+      <option value="mid">中</option>
+      <option value="low">低</option>
+    </select></div>
     <button class="btn ghost" onclick="UI.hideSettings()">← 返回</button>
   </div>
 </div>
@@ -239,7 +245,7 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh;touch-
 
 var S = (function(){
   var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints>0);
-  var s = {music:false,sfx:true,vibration:false,control:isTouch?"touch":"mouse"};
+  var s = {music:false,sfx:true,vibration:false,control:isTouch?"touch":"mouse",quality:"auto"};
   function l(){ try{ var d = JSON.parse(localStorage.getItem("starbattle_settings")); if(d) Object.assign(s,d); }catch(e){} }
   function sv(){ try{ localStorage.setItem("starbattle_settings",JSON.stringify(s)); }catch(e){} }
   l();
@@ -251,7 +257,9 @@ var S = (function(){
     toggleMusic: function(){ s.music=!s.music; var el=document.getElementById("musicK"); if(el)el.parentElement.classList.toggle("on",s.music); sv(); },
     toggleSfx: function(){ s.sfx=!s.sfx; var el=document.getElementById("sfxK"); if(el)el.parentElement.classList.toggle("on",s.sfx); sv(); },
     toggleVib: function(){ s.vibration=!s.vibration; var el=document.getElementById("vibK"); if(el)el.parentElement.classList.toggle("on",s.vibration); sv(); },
-    setCtrl: function(v){ s.control=v; sv(); }
+    setCtrl: function(v){ s.control=v; sv(); },
+    setQuality: function(v){ s.quality=v; sv(); if(window.Game&&Game.setQualityLevel) Game.setQualityLevel(); },
+    get quality(){return s.quality;}
   };
 })();
 
@@ -283,7 +291,7 @@ var Audio = (function(){
     s.connect(g); g.connect(c.destination);
     s.start();
   }
-  var lastShoot = 0;
+  var lastShoot = 0, lastExplosion = 0, lastHit = 0;
   return {
     shoot: function(){
       var t = Date.now();
@@ -291,9 +299,19 @@ var Audio = (function(){
       lastShoot = t;
       playTone(800,0.08,"square",0.1);
     },
-    explosion: function(){ noise(0.3,0.12); playTone(100,0.2,"sawtooth",0.15); },
+    explosion: function(){
+      var t = Date.now();
+      if(t-lastExplosion<40) return;  // 节流：高击杀频率下减少噪声缓冲区分配
+      lastExplosion = t;
+      noise(0.3,0.12); playTone(100,0.2,"sawtooth",0.15);
+    },
     powerup: function(){ playTone(600,0.1,"sine",0.12); setTimeout(function(){playTone(900,0.15,"sine",0.12);},100); },
-    hit: function(){ playTone(300,0.06,"square",0.08); },
+    hit: function(){
+      var t = Date.now();
+      if(t-lastHit<20) return;  // 节流：密集弹幕命中时减少节点创建
+      lastHit = t;
+      playTone(300,0.06,"square",0.08);
+    },
     bossWarning: function(){ playTone(200,0.3,"square",0.1); setTimeout(function(){playTone(250,0.3,"square",0.1);},400); },
     gameOver: function(){ playTone(400,0.15,"sawtooth",0.1); setTimeout(function(){playTone(300,0.15,"sawtooth",0.1);},200); setTimeout(function(){playTone(200,0.3,"sawtooth",0.1);},400); },
     click: function(){ playTone(1000,0.04,"sine",0.06); },
@@ -309,6 +327,7 @@ var Game = (function(){
   var running=false, paused=false, gameOver=false;
   var frameId=null, spawnTimer=0, waveEnemiesLeft=0, bossActive=false;
   var mouseX=0, mouseY=0, keys={}, weaponLevel=0, shieldActive=false;
+  var weaponBoosted=false, baseWeaponLevel=0;  // 双倍火力：过期回退到拾取前等级
   var weaponNames=['基础','双发','散射','激光','弹幕'];
   var weaponTypes=['single','dual','spread','laser','barrage'];
   var currentShip=0, ownedShips=[0], ownedWeapons=[0], currentWeapon=0;
@@ -319,12 +338,12 @@ var Game = (function(){
   var levelBonuses={fireRate:1,speed:1,damage:1,extraLife:0,startShield:false};
   // ---- 画质自适应系统（手机端防糊/防掉帧） ----
   var QUALITY_LEVELS = [
-    {shadows:false, dprCap:1,   maxParticles:120, starCount:70,  label:'低'},
-    {shadows:false, dprCap:1,   maxParticles:200, starCount:90,  label:'中低'},
-    {shadows:true,  dprCap:1.5, maxParticles:260, starCount:110, label:'中'},
-    {shadows:true,  dprCap:2,   maxParticles:300, starCount:120, label:'高'}
+    {shadows:false, dprCap:1,   maxParticles:100, starCount:70,  label:'低'},
+    {shadows:false, dprCap:1,   maxParticles:160, starCount:90,  label:'中低'},
+    {shadows:true,  dprCap:1.5, maxParticles:200, starCount:110, label:'中'},
+    {shadows:true,  dprCap:2,   maxParticles:240, starCount:120, label:'高'}
   ];
-  var q = { level:3, dpr:1, shadows:true, maxParticles:300, starCount:120 };
+  var q = { level:3, dpr:1, shadows:true, maxParticles:240, starCount:120, manualCap:3 };
   var fpsFrames=0, fpsTime=0, fpsAvg=60, lastT=0;
   var hudEls = {};
   // 阴影开关：关闭时一律 0，避免逐实体 shadowBlur 高开销
@@ -350,11 +369,11 @@ var Game = (function(){
     {id:'coin',name:'金币',icon:'🪙',category:'instant',effect:'coin',dur:0,desc:'+10金币',color:'#ffd700'},
     {id:'recharge',name:'炸弹补给',icon:'💣',category:'instant',effect:'recharge',dur:0,desc:'重置必杀技冷却',color:'#ff6b81'},
     // 持续增益 buff (dur 单位：帧, 60fps)
-    {id:'weapon',name:'双倍火力',icon:'🔥',category:'buff',effect:'weapon',dur:300,desc:'武器等级+1',color:'#ff6348'},
-    {id:'shield',name:'护盾',icon:'🛡️',category:'buff',effect:'shield',dur:300,desc:'无敌护盾',color:'#00ff88'},
-    {id:'speed',name:'急速',icon:'⚡',category:'buff',effect:'speed',dur:180,desc:'移速+50%',color:'#00d4ff'},
-    {id:'pierce',name:'穿透弹',icon:'🎯',category:'buff',effect:'pierce',dur:360,desc:'子弹穿透敌机',color:'#a855f7'},
-    {id:'double',name:'双倍分数',icon:'✨',category:'buff',effect:'double',dur:480,desc:'得分翻倍',color:'#ffd700'},
+    {id:'weapon',name:'双倍火力',icon:'🔥',category:'buff',effect:'weapon',dur:600,desc:'武器等级+1',color:'#ff6348'},
+    {id:'shield',name:'护盾',icon:'🛡️',category:'buff',effect:'shield',dur:420,desc:'无敌护盾',color:'#00ff88'},
+    {id:'speed',name:'急速',icon:'⚡',category:'buff',effect:'speed',dur:240,desc:'移速+50%',color:'#00d4ff'},
+    {id:'pierce',name:'穿透弹',icon:'🎯',category:'buff',effect:'pierce',dur:600,desc:'子弹穿透敌机',color:'#a855f7'},
+    {id:'double',name:'双倍分数',icon:'✨',category:'buff',effect:'double',dur:600,desc:'得分翻倍',color:'#ffd700'},
     // 主动技能 active (拾取进入槽位)
     {id:'emp',name:'EMP脉冲',icon:'💫',category:'active',effect:'emp',dur:0,desc:'瘫痪全场敌机3秒',color:'#00d4ff'},
     {id:'slowmo',name:'时间减速',icon:'⏱️',category:'active',effect:'slowmo',dur:0,desc:'敌机减速50%持续5秒',color:'#7b2ff7'},
@@ -448,47 +467,74 @@ var Game = (function(){
     canvas.height = Math.max(1, Math.round(H*dpr));
     ctx.setTransform(dpr,0,0,dpr,0,0);
     buildBg();
-    for(var i=0;i<stars.length;i++){
-      if(stars[i].x>W) stars[i].x=W;
-      if(stars[i].y>H) stars[i].y=H;
+  }
+  var bgCanvas = null, bgCtx = null, dynStars = [];
+  function buildBg(){
+    if(!bgCanvas){
+      try{ bgCanvas = document.createElement('canvas'); bgCtx = bgCanvas.getContext('2d'); }catch(e){}
+    }
+    if(!bgCtx) return;
+    var dpr = q.dpr;
+    bgCanvas.width = Math.max(1, Math.round(W*dpr));
+    bgCanvas.height = Math.max(1, Math.round(H*dpr));
+    bgCtx.setTransform(dpr,0,0,dpr,0,0);
+    var g = null;
+    try{
+      g = bgCtx.createRadialGradient(W/2,H/2,Math.max(60,W*0.5),W/2,H/2,Math.max(W,H));
+      g.addColorStop(0,'#0a0a2e');
+      g.addColorStop(1,'#050518');
+    }catch(e){}
+    bgCtx.fillStyle = g || '#0a0a2e';
+    bgCtx.fillRect(0,0,W,H);
+    // 静态星野预渲染进背景，仅保留少量动态星
+    var total = Math.max(60, q.starCount);
+    dynStars = [];
+    for(var i=0;i<total;i++){
+      var sx=Math.random()*W, sy=Math.random()*H, sr=Math.random()*1.5+0.4, sb=Math.random()*0.6+0.4;
+      if(i<16){
+        dynStars.push({x:sx,y:sy,r:sr,s:Math.random()*2+0.5,b:sb});
+      }else{
+        bgCtx.fillStyle='rgba(255,255,255,'+sb+')';
+        bgCtx.beginPath();
+        bgCtx.arc(sx,sy,sr,0,Math.PI*2);
+        bgCtx.fill();
+      }
     }
   }
-  var bgGrad = null;
-  function buildBg(){
-    try{
-      bgGrad = ctx.createRadialGradient(W/2,H/2,Math.max(60,W*0.5),W/2,H/2,Math.max(W,H));
-      bgGrad.addColorStop(0,'#0a0a2e');
-      bgGrad.addColorStop(1,'#050518');
-    }catch(e){ bgGrad = null; }
-  }
   // ---- 画质自适应：按实测帧率升降级 ----
+  function qualityCap(){
+    var mq = 3;
+    if(S && S.quality){
+      if(S.quality==='mid') mq = 2;
+      else if(S.quality==='low') mq = 0;
+    }
+    return mq;
+  }
   function applyQuality(){
+    q.manualCap = qualityCap();
+    if(q.level > q.manualCap) q.level = q.manualCap;
     var lv = QUALITY_LEVELS[q.level];
     q.shadows = lv.shadows;
     q.maxParticles = lv.maxParticles;
+    q.starCount = lv.starCount;
     q.dpr = Math.min(window.devicePixelRatio||1, lv.dprCap);
-    if(stars.length !== lv.starCount) initStars();
-    else q.starCount = lv.starCount;
     resize();
   }
+  function setQualityLevel(){  // 用户手动选择画质：直接跳到所选档
+    q.level = qualityCap();
+    applyQuality();
+  }
   function adaptQuality(){
-    if(fpsAvg < 40 && q.level > 0){
+    if(fpsAvg < 45 && q.level > 0){
       q.level--;
-    }else if(fpsAvg > 55 && q.level < QUALITY_LEVELS.length-1){
+    }else if(fpsAvg > 55 && q.level < q.manualCap){
       q.level++;
     }
     applyQuality();
   }
   function initStars(){
-    stars = [];
-    q.starCount = QUALITY_LEVELS[q.level].starCount;
-    for(var i=0;i<q.starCount;i++){
-      stars.push({
-        x:Math.random()*W, y:Math.random()*H,
-        r:Math.random()*2+0.5, s:Math.random()*2+0.5,
-        b:Math.random()*0.6+0.4
-      });
-    }
+    // 星野已由 buildBg 预渲染（静态星 + 少量动态星），此函数保留兼容调用
+    buildBg();
   }
   function initInput(){
     canvas.addEventListener('mousemove',function(e){
@@ -548,7 +594,7 @@ var Game = (function(){
     lastT = now;
     if(!running && !gameOver) { frameId = requestAnimationFrame(loop); return; }
     if(!paused && running) update();
-    draw();
+    if(!paused) draw();  // 暂停时冻结画面，降低持续功耗
     frameId = requestAnimationFrame(loop);
   }
 
@@ -1068,6 +1114,7 @@ var Game = (function(){
     }else if(p.category==='buff'){
       activeEffects[p.effect] = p.dur;
       if(p.effect==='weapon'){
+        if(!weaponBoosted){ weaponBoosted = true; baseWeaponLevel = weaponLevel; }
         weaponLevel = Math.min(weapons.length-1, weaponLevel+1);
       }else if(p.effect==='shield'){
         shieldActive = true;
@@ -1095,7 +1142,7 @@ var Game = (function(){
 
   function onEffectEnd(effect){
     if(effect==='weapon'){
-      weaponLevel = Math.max(0, weaponLevel-1);
+      if(weaponBoosted){ weaponLevel = baseWeaponLevel; weaponBoosted = false; }
       UI.showNotif('💫 火力恢复','');
     }else if(effect==='shield'){
       shieldActive = false;
@@ -1391,19 +1438,20 @@ var Game = (function(){
 
   function draw(){
     ctx.clearRect(0,0,W,H);
-    // background gradient（缓存，避免每帧重建）
-    ctx.fillStyle = bgGrad || '#0a0a2e';
-    ctx.fillRect(0,0,W,H);
-    // stars
-    for(var i=0;i<stars.length;i++){
-      var s=stars[i];
-      ctx.fillStyle='rgba(255,255,255,'+s.b+')';
+    // 背景：预渲染（渐变+静态星野），每帧一次 blit，显著降低功耗与发热
+    ctx.drawImage(bgCanvas,0,0,W,H);
+    // 动态星：少量星保持流动感
+    for(var i=0;i<dynStars.length;i++){
+      var s=dynStars[i];
+      ctx.globalAlpha=s.b;
+      ctx.fillStyle='#ffffff';
       ctx.beginPath();
       ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
       ctx.fill();
       s.y+=s.s*(S.control==='mouse'?0.3:0.5);
       if(s.y>H){ s.y=0; s.x=Math.random()*W; }
     }
+    ctx.globalAlpha=1;
     // powerups
     for(var i=0;i<powerups.length;i++){
       var p=powerups[i];
@@ -1657,6 +1705,8 @@ var Game = (function(){
 
   return {
     init: init, startGame: startGame, togglePause: togglePause, quit: quit,
+    applyQuality: applyQuality,
+    setQualityLevel: setQualityLevel,
     useAbility: useAbility,
     getWave: function(){return wave;},
     getScore: function(){return score;},
@@ -1896,6 +1946,7 @@ var UI = (function(){
     document.getElementById('musicK').parentElement.classList.toggle('on',S.music);
     document.getElementById('sfxK').parentElement.classList.toggle('on',S.sfx);
     document.getElementById('vibK').parentElement.classList.toggle('on',S.vibration);
+    var qs=document.getElementById('qualitySel'); if(qs) qs.value = S.quality;
   }
   function hideSettings(){ document.getElementById('settingsScreen').classList.remove('active'); }
   function showAchv(){ hideAll(); document.getElementById('achvScreen').classList.add('active'); renderAchievements(); }
