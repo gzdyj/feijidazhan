@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星际猎手 · 飞机大战 — 官方主页</title>
+<meta name="description" content="《星际猎手》是一款使用 HTML5 Canvas 开发的经典飞机大战游戏：5 种战机、5 种武器、每 5 波一遇的 BOSS、道具与技能系统，深空霓虹视觉，浏览器即开即玩。">
+<meta name="keywords" content="飞机大战, 星际猎手, HTML5游戏, Canvas游戏, 射击游戏">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 8 L46 52 L32 43 L18 52 Z' fill='%2300d4ff'/%3E%3Cpath d='M32 18 L39 46 L32 40 L25 46 Z' fill='%230a0a1a' opacity='.55'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 星野背景 -->
+<canvas id="starfield" aria-hidden="true"></canvas>
+<div class="bg-glow bg-glow-a" aria-hidden="true"></div>
+<div class="bg-glow bg-glow-b" aria-hidden="true"></div>
+<div class="bg-glow bg-glow-c" aria-hidden="true"></div>
+
+<!-- ===== 导航 ===== -->
+<header class="nav" id="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="#home" aria-label="星际猎手 首页">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 L46 52 L32 42 L18 52 Z" fill="url(#brandGrad)"/><path d="M32 16 L39 46 L32 39 L25 46 Z" fill="#0a0a1a" opacity=".5"/><defs><linearGradient id="brandGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7deaff"/><stop offset="1" stop-color="#00a8cc"/></linearGradient></defs></svg>
+      <span class="brand-text">星际猎手<small>STAR HUNTER</small></span>
+    </a>
+    <nav class="nav-links" id="navLinks">
+      <a href="#features">游戏特色</a>
+      <a href="#ships">战机图鉴</a>
+      <a href="#weapons">武器系统</a>
+      <a href="#items">道具技能</a>
+      <a href="#play">玩法操作</a>
+      <a href="#deploy">快速部署</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-ghost btn-sm" href="https://github.com/gzdyj/feijidazhan" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn btn-primary btn-sm" href="#play-demo" id="navPlayBtn">立即试玩</a>
+      <button class="nav-toggle" id="navToggle" aria-label="打开菜单" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ===== Hero ===== -->
+  <section class="hero" id="home">
+    <div class="container hero-inner">
+      <p class="hero-kicker reveal">HTML5 CANVAS · 经典街机射击</p>
+      <h1 class="hero-title reveal" style="--d:.08s">星际<span class="grad">猎手</span></h1>
+      <p class="hero-sub reveal" style="--d:.16s">飞 机 大 战</p>
+      <p class="hero-desc reveal" style="--d:.24s">
+        深空霓虹视觉的经典飞机大战 · 5 种战机 / 5 种武器 / 每 5 波降临 BOSS<br>
+        道具掉落 · 连击加成 · 成就与排行榜，打开浏览器即可开战
+      </p>
+      <div class="hero-actions reveal" style="--d:.32s">
+        <a class="btn btn-primary btn-lg" href="#play-demo" id="playBtn">🎮 立即试玩</a>
+        <a class="btn btn-glass btn-lg" href="https://github.com/gzdyj/feijidazhan" target="_blank" rel="noopener">查看源码 ↗</a>
+      </div>
+      <p class="hero-note reveal" style="--d:.4s">试玩版将实时加载 GitHub 最新版本，需保持网络连接</p>
+      <div class="hero-stats reveal" style="--d:.48s">
+        <div class="stat"><strong>5</strong><span>种战机</span></div>
+        <div class="stat"><strong>5</strong><span>种武器</span></div>
+        <div class="stat"><strong>8</strong><span>项成就</span></div>
+        <div class="stat"><strong>∞</strong><span>无尽波次</span></div>
+      </div>
+    </div>
+    <a class="hero-scroll" href="#features" aria-label="向下滚动"><span></span></a>
+  </section>
+
+  <!-- ===== 游戏特色 ===== -->
+  <section class="section" id="features">
+    <div class="container">
+      <header class="section-head reveal">
+        <span class="section-tag">FEATURES</span>
+        <h2 class="section-title">游戏特色</h2>
+        <p class="section-desc">街机手感 × 现代化视听，经典玩法全面进化</p>
+      </header>
+      <div class="grid grid-3">
+        <article class="card reveal">
+          <div class="card-icon">🚀</div>
+          <h3>战机系统</h3>
+          <p>5 种战机各自拥有独特外形、机身尺寸、引擎光效与数值定位，从先锋号一路升级到传说级凤凰。</p>
+        </article>
+        <article class="card reveal" style="--d:.06s">
+          <div class="card-icon">🔫</div>
+          <h3>武器系统</h3>
+          <p>基础、双发、散射、激光、弹幕 5 种武器可购买、可装备切换，子弹外观与弹道各有辨识度。</p>
+        </article>
+        <article class="card reveal" style="--d:.12s">
+          <div class="card-icon">👾</div>
+          <h3>BOSS 战</h3>
+          <p>每 5 波敌人清空后，强力 BOSS 降临。击破 BOSS 震屏、粒子爆裂、全屏白闪，爽感拉满。</p>
+        </article>
+        <article class="card reveal">
+          <div class="card-icon">🔥</div>
+          <h3>连击系统</h3>
+          <p>连续击落敌机触发 Combo，连击越高分数加成越大；5/10/20/50 连击触发屏幕闪光反馈。</p>
+        </article>
+        <article class="card reveal" style="--d:.06s">
+          <div class="card-icon">🏆</div>
+          <h3>成就系统</h3>
+          <p>8 个解锁条件各异的成就，贯穿战机、武器、波次与金币维度，为目标玩家而设。</p>
+        </article>
+        <article class="card reveal" style="--d:.12s">
+          <div class="card-icon">🏅</div>
+          <h3>本地排行榜</h3>
+          <p>本地保存 Top 10 战绩，随时回看最高分，挑战更强的自己。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 战机图鉴 ===== -->
+  <section class="section section-alt" id="ships">
+    <div class="container">
+      <header class="section-head reveal">
+        <span class="section-tag">HANGAR</span>
+        <h2 class="section-title">战机图鉴</h2>
+        <p class="section-desc">5 种战机 · 外形 / 数值 / 特效三重差异化，战机商店可购买并装备</p>
+      </header>
+      <div class="grid ships-grid">
+        <article class="card ship-card reveal">
+          <div class="ship-hangar" style="--ship:#00d4ff">
+            <svg class="ship-svg" viewBox="0 0 64 64"><defs><linearGradient id="gPio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7deaff"/><stop offset="1" stop-color="#00a8cc"/></linearGradient></defs><path d="M32 6 L45 50 L32 42 L19 50 Z" fill="url(#gPio)"/><path d="M32 16 L39 44 L32 39 L25 44 Z" fill="#0b1026" opacity=".55"/><ellipse cx="32" cy="48" rx="6" ry="3" fill="#00d4ff" opacity=".85"/></svg>
+          </div>
+          <h3>先锋号<small>PIONEER</small></h3>
+          <p class="ship-desc">均衡型战机，初始座驾，单引擎蓝光，扎实可靠。</p>
+          <div class="ship-stats">
+            <div class="bar"><span>速度</span><i><b style="width:55%"></b></i></div>
+            <div class="bar"><span>防御</span><i><b style="width:55%"></b></i></div>
+          </div>
+          <span class="tag tag-free">初始赠送</span>
+        </article>
+
+        <article class="card ship-card reveal" style="--d:.06s">
+          <div class="ship-hangar" style="--ship:#ff4d6d">
+            <svg class="ship-svg" viewBox="0 0 64 64"><defs><linearGradient id="gPre" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8fa3"/><stop offset="1" stop-color="#d90429"/></linearGradient></defs><path d="M32 4 L37 52 L32 44 L27 52 Z" fill="url(#gPre)"/><path d="M27 44 L14 54 L24 40 Z" fill="url(#gPre)" opacity=".8"/><path d="M37 44 L50 54 L40 40 Z" fill="url(#gPre)" opacity=".8"/><path d="M32 12 L35 42 L32 37 L29 42 Z" fill="#1a0b12" opacity=".5"/><ellipse cx="32" cy="49" rx="4" ry="2.5" fill="#ff4d6d" opacity=".85"/></svg>
+          </div>
+          <h3>掠食者<small>PREDATOR</small></h3>
+          <p class="ship-desc">狭长锐利的尖刺机身，双引擎红光，追求极致速度。</p>
+          <div class="ship-stats">
+            <div class="bar"><span>速度</span><i><b style="width:88%"></b></i></div>
+            <div class="bar"><span>防御</span><i><b style="width:35%"></b></i></div>
+          </div>
+          <span class="tag tag-coin">金币解锁</span>
+        </article>
+
+        <article class="card ship-card reveal" style="--d:.12s">
+          <div class="ship-hangar" style="--ship:#ffd166">
+            <svg class="ship-svg" viewBox="0 0 64 64"><defs><linearGradient id="gBas" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe29a"/><stop offset="1" stop-color="#e8a20c"/></linearGradient></defs><path d="M32 8 L52 24 L52 46 L32 56 L12 46 L12 24 Z" fill="url(#gBas)"/><path d="M32 16 L44 27 L44 44 L32 50 L20 44 L20 27 Z" fill="#201502" opacity=".35"/><ellipse cx="22" cy="50" rx="2.5" ry="3" fill="#ffd166"/><ellipse cx="42" cy="50" rx="2.5" ry="3" fill="#ffd166"/><ellipse cx="32" cy="53" rx="2.5" ry="3" fill="#ffd166"/><ellipse cx="12" cy="49" rx="2.5" ry="3" fill="#ffd166"/></svg>
+          </div>
+          <h3>堡垒号<small>BASTION</small></h3>
+          <p class="ship-desc">宽厚六边形装甲，四引擎金光，防御拉满的钢铁巨兽。</p>
+          <div class="ship-stats">
+            <div class="bar"><span>速度</span><i><b style="width:38%"></b></i></div>
+            <div class="bar"><span>防御</span><i><b style="width:92%"></b></i></div>
+          </div>
+          <span class="tag tag-coin">金币解锁</span>
+        </article>
+
+        <article class="card ship-card reveal" style="--d:.18s">
+          <div class="ship-hangar" style="--ship:#a78bfa">
+            <svg class="ship-svg" viewBox="0 0 64 64"><defs><linearGradient id="gSha" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><path d="M32 6 L54 38 L42 38 L42 50 L22 50 L22 38 L10 38 Z" fill="url(#gSha)" opacity=".85"/><path d="M32 12 L42 34 L36 34 L36 44 L28 44 L28 34 L22 34 Z" fill="#140b2e" opacity=".5"/><ellipse cx="32" cy="47" rx="4" ry="2.5" fill="#a78bfa" opacity=".9"/></svg>
+          </div>
+          <h3>暗影<small>SHADOW</small></h3>
+          <p class="ship-desc">流线隐形飞翼，紫色尾焰，半透明机身若隐若现。</p>
+          <div class="ship-stats">
+            <div class="bar"><span>速度</span><i><b style="width:72%"></b></i></div>
+            <div class="bar"><span>防御</span><i><b style="width:62%"></b></i></div>
+          </div>
+          <span class="tag tag-coin">金币解锁</span>
+        </article>
+
+        <article class="card ship-card reveal ship-legend" style="--d:.24s">
+          <div class="ship-hangar" style="--ship:#ff7b3d">
+            <svg class="ship-svg" viewBox="0 0 64 64"><defs><linearGradient id="gPho" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd166"/><stop offset=".5" stop-color="#ff7b3d"/><stop offset="1" stop-color="#e8362b"/></linearGradient></defs><path d="M32 4 L39 42 L32 34 L25 42 Z" fill="url(#gPho)"/><path d="M25 38 L6 48 L20 40 Z" fill="url(#gPho)" opacity=".9"/><path d="M39 38 L58 48 L44 40 Z" fill="url(#gPho)" opacity=".9"/><path d="M32 42 L36 58 L32 52 L28 58 Z" fill="#ff7b3d" opacity=".9"/><path d="M32 40 L34 55 L32 50 L30 55 Z" fill="#ffd166" opacity=".8"/><path d="M32 18 L35 40 L32 35 L29 40 Z" fill="#2b0a05" opacity=".45"/></svg>
+          </div>
+          <h3>凤凰<small>PHOENIX</small></h3>
+          <p class="ship-desc">展翅双翼火焰拖尾，传说级华丽机身，火力全开。</p>
+          <div class="ship-stats">
+            <div class="bar"><span>速度</span><i><b style="width:85%"></b></i></div>
+            <div class="bar"><span>防御</span><i><b style="width:80%"></b></i></div>
+          </div>
+          <span class="tag tag-legend">传说级</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 武器系统 ===== -->
+  <section class="section" id="weapons">
+    <div class="container">
+      <header class="section-head reveal">
+        <span class="section-tag">ARMORY</span>
+        <h2 class="section-title">武器系统</h2>
+        <p class="section-desc">5 种武器 · 可购买 / 可装备切换，从基础光弹一路进化到全屏弹幕</p>
+      </header>
+      <div class="grid grid-5 weapons-grid">
+        <article class="card weapon-card reveal">
+          <div class="weapon-vis" style="--wcolor:#38bdf8"><svg viewBox="0 0 64 64"><ellipse cx="32" cy="30" rx="5" ry="16" fill="#38bdf8"/><ellipse cx="32" cy="26" rx="2" ry="8" fill="#e0f2fe" opacity=".9"/></svg></div>
+          <h3>基础火控<small>STANDARD</small></h3>
+          <p>蓝色光弹，标准弹道，开局自带，稳定输出。</p>
+        </article>
+        <article class="card weapon-card reveal" style="--d:.06s">
+          <div class="weapon-vis" style="--wcolor:#22d3ee"><svg viewBox="0 0 64 64"><ellipse cx="24" cy="30" rx="4.5" ry="14" fill="#22d3ee"/><ellipse cx="40" cy="30" rx="4.5" ry="14" fill="#22d3ee"/><ellipse cx="24" cy="26" rx="2" ry="7" fill="#cffafe"/><ellipse cx="40" cy="26" rx="2" ry="7" fill="#cffafe"/></svg></div>
+          <h3>双发连射<small>TWIN</small></h3>
+          <p>青色双弹并行射击，火力翻倍，轻微拖尾。</p>
+        </article>
+        <article class="card weapon-card reveal" style="--d:.12s">
+          <div class="weapon-vis" style="--wcolor:#a78bfa"><svg viewBox="0 0 64 64"><ellipse cx="32" cy="26" rx="4" ry="14" fill="#a78bfa"/><g transform="rotate(-20 32 32)"><ellipse cx="32" cy="26" rx="4" ry="14" fill="#8b5cf6" opacity=".85"/></g><g transform="rotate(20 32 32)"><ellipse cx="32" cy="26" rx="4" ry="14" fill="#8b5cf6" opacity=".85"/></g></svg></div>
+          <h3>散射炮<small>SPREAD</small></h3>
+          <p>紫色三连扇形扩散，覆盖面广，近身收割。</p>
+        </article>
+        <article class="card weapon-card reveal" style="--d:.18s">
+          <div class="weapon-vis" style="--wcolor:#ff4d6d"><svg viewBox="0 0 64 64"><rect x="26" y="4" width="12" height="56" rx="6" fill="#ff4d6d"/><rect x="29" y="6" width="6" height="52" rx="3" fill="#ffe4e6" opacity=".85"/></svg></div>
+          <h3>激光炮<small>LASER</small></h3>
+          <p>红色长条激光，穿透发光，伤害可观。</p>
+        </article>
+        <article class="card weapon-card reveal weapon-legend" style="--d:.24s">
+          <div class="weapon-vis" style="--wcolor:#ffd166"><svg viewBox="0 0 64 64"><g stroke="#ffd166" stroke-width="3" stroke-linecap="round"><line x1="32" y1="46" x2="32" y2="8"/><line x1="32" y1="46" x2="16" y2="12" opacity=".8"/><line x1="32" y1="46" x2="48" y2="12" opacity=".8"/><line x1="32" y1="46" x2="6" y2="20" opacity=".6"/><line x1="32" y1="46" x2="58" y2="20" opacity=".6"/></g><circle cx="32" cy="46" r="4" fill="#ffd166"/></svg></div>
+          <h3>弹幕风暴<small>BARRAGE</small></h3>
+          <p>金色弹幕全屏扇射，火力覆盖整个屏幕。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 道具技能 ===== -->
+  <section class="section section-alt" id="items">
+    <div class="container">
+      <header class="section-head reveal">
+        <span class="section-tag">POWER-UPS</span>
+        <h2 class="section-title">道具 & 技能</h2>
+        <p class="section-desc">掉落道具即时生效 · 主动技能入槽（最多 3 格，数字键 1 / 2 / 3 释放）</p>
+      </header>
+
+      <h3 class="sub-head reveal">⚡ 主动技能 <small>拾取后进入道具槽，点击槽位或按数字键释放</small></h3>
+      <div class="grid grid-5 items-grid">
+        <article class="card item-card reveal"><div class="item-emoji">💫</div><h4>EMP 脉冲</h4><p>瘫痪全场敌机 3 秒</p></article>
+        <article class="card item-card reveal" style="--d:.05s"><div class="item-emoji">⏱️</div><h4>时间减速</h4><p>全场敌机减速 50%，持续 5 秒</p></article>
+        <article class="card item-card reveal" style="--d:.1s"><div class="item-emoji">🧲</div><h4>磁铁</h4><p>吸引全场掉落物，持续 8 秒</p></article>
+        <article class="card item-card reveal" style="--d:.15s"><div class="item-emoji">☢️</div><h4>核弹</h4><p>对全场敌机造成大量伤害</p></article>
+        <article class="card item-card reveal" style="--d:.2s"><div class="item-emoji">👥</div><h4>分身</h4><p>生成 2 个分身协助射击，持续 8 秒</p></article>
+      </div>
+
+      <h3 class="sub-head reveal" style="--d:.1s">🎁 掉落道具 <small>击落敌机概率掉落，拾取即时生效</small></h3>
+      <div class="grid grid-4 drops-grid">
+        <article class="card item-card item-sm reveal"><div class="item-emoji">🔥</div><h4>双倍火力</h4><p>武器等级 +1 · 5 秒</p></article>
+        <article class="card item-card item-sm reveal" style="--d:.04s"><div class="item-emoji">🛡️</div><h4>护盾</h4><p>无敌护盾 · 5 秒</p></article>
+        <article class="card item-card item-sm reveal" style="--d:.08s"><div class="item-emoji">❤️</div><h4>生命</h4><p>恢复一条命</p></article>
+        <article class="card item-card item-sm reveal" style="--d:.12s"><div class="item-emoji">⚡</div><h4>急速</h4><p>移速 ×1.5 · 3 秒</p></article>
+        <article class="card item-card item-sm reveal" style="--d:.16s"><div class="item-emoji">🪙</div><h4>金币</h4><p>额外 +10 金币</p></article>
+        <article class="card item-card item-sm reveal" style="--d:.2s"><div class="item-emoji">🎯</div><h4>穿透弹</h4><p>子弹穿透敌机 · 6 秒</p></article>
+        <article class="card item-card item-sm reveal" style="--d:.24s"><div class="item-emoji">✨</div><h4>双倍分数</h4><p>得分翻倍 · 8 秒</p></article>
+        <article class="card item-card item-sm reveal" style="--d:.28s"><div class="item-emoji">💣</div><h4>炸弹补给</h4><p>重置必杀技冷却</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 玩法操作 ===== -->
+  <section class="section" id="play">
+    <div class="container">
+      <header class="section-head reveal">
+        <span class="section-tag">HOW TO PLAY</span>
+        <h2 class="section-title">玩法与操作</h2>
+        <p class="section-desc">自动射击 · 波次推进 · 每 5 波 BOSS · 多种操作方式随心选</p>
+      </header>
+      <div class="play-grid">
+        <article class="card play-card reveal">
+          <h3>🎮 操作方式</h3>
+          <ul class="ctrl-list">
+            <li><span class="kbd">🖱️</span><div><b>鼠标</b><small>移动控制战机 · 自动射击</small></div></li>
+            <li><span class="kbd">⌨️</span><div><b>键盘</b><small>方向键 / WASD 移动 · Shift 加速</small></div></li>
+            <li><span class="kbd">💣</span><div><b>必杀技</b><small>空格键 释放炸弹清屏（15 秒冷却）</small></div></li>
+            <li><span class="kbd">1·2·3</span><div><b>道具槽</b><small>数字键释放已拾取的主动技能</small></div></li>
+            <li><span class="kbd">📱</span><div><b>触屏</b><small>手指拖拽移动战机</small></div></li>
+          </ul>
+        </article>
+        <article class="card play-card reveal" style="--d:.1s">
+          <h3>🗺️ 战斗流程</h3>
+          <ol class="flow-list">
+            <li><b>开局</b><span>自动射击，击落敌机获取分数与金币</span></li>
+            <li><b>波次</b><span>每波敌人清空后进入下一波，敌机生成随波次加速</span></li>
+            <li><b>BOSS</b><span>每 5 波降临强力 BOSS，击破获得大量奖励</span></li>
+            <li><b>掉落</b><span>击落敌机概率掉落道具，拾取即时生效</span></li>
+            <li><b>连击</b><span>连续击落累积 Combo，分数加成节节攀升</span></li>
+          </ol>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 技术栈 ===== -->
+  <section class="section section-alt" id="tech">
+    <div class="container">
+      <header class="section-head reveal">
+        <span class="section-tag">TECH STACK</span>
+        <h2 class="section-title">技术栈</h2>
+        <p class="section-desc">零依赖纯前端 · 无需安装 · 浏览器即开即玩</p>
+      </header>
+      <div class="tech-grid reveal">
+        <div class="tech"><b>HTML5</b><span>页面与游戏骨架</span></div>
+        <div class="tech"><b>CSS3</b><span>毛玻璃 + 霓虹 UI</span></div>
+        <div class="tech"><b>JavaScript ES6+</b><span>核心游戏逻辑</span></div>
+        <div class="tech"><b>Canvas 2D</b><span>实时渲染引擎</span></div>
+        <div class="tech"><b>Web Audio API</b><span>程序化合成音效</span></div>
+        <div class="tech"><b>localStorage</b><span>进度 / 设置 / 排行榜</span></div>
+        <div class="tech"><b>Docker</b><span>容器化部署</span></div>
+        <div class="tech"><b>Nginx Alpine</b><span>静态服务网关</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 快速部署 ===== -->
+  <section class="section" id="deploy">
+    <div class="container">
+      <header class="section-head reveal">
+        <span class="section-tag">DEPLOY</span>
+        <h2 class="section-title">快速部署</h2>
+        <p class="section-desc">一条命令启动，或直接双击打开 index.html 开玩</p>
+      </header>
+      <div class="deploy-grid">
+        <article class="card deploy-card reveal">
+          <h3>🐳 Docker 部署（推荐）</h3>
+          <div class="code-block">
+            <code id="dockerCmd">docker run -d -p 8080:80 --name feijidazhan smithgz/feijidazhan:latest</code>
+            <button class="copy-btn" id="copyBtn" data-target="dockerCmd" aria-label="复制命令">复制</button>
+          </div>
+          <p class="deploy-note">启动后访问 <a href="http://localhost:8080" target="_blank" rel="noopener">http://localhost:8080</a> 即可游玩。</p>
+          <details class="more">
+            <summary>更多部署方式</summary>
+            <div class="code-block code-sm"><code>docker build -t smithgz/feijidazhan:latest .</code></div>
+            <div class="code-block code-sm"><code>docker compose up -d</code></div>
+            <div class="code-block code-sm"><code>python -m http.server 8080</code></div>
+            <div class="code-block code-sm"><code>npx serve .</code></div>
+          </details>
+        </article>
+        <article class="card deploy-card reveal" style="--d:.1s">
+          <h3>🚀 本地运行</h3>
+          <p class="deploy-note">游戏是纯静态页面，无需构建工具。直接双击 <code>index.html</code> 即可在浏览器中打开游玩；需要本地服务器时，任选一种方式即可。</p>
+          <a class="btn btn-primary" href="https://github.com/gzdyj/feijidazhan" target="_blank" rel="noopener">前往 GitHub 下载源码 ↗</a>
+          <div class="deploy-facts">
+            <div><b>许可</b><span>MIT License</span></div>
+            <div><b>仓库</b><span>github.com/gzdyj/feijidazhan</span></div>
+            <div><b>语言</b><span>JavaScript · 100%</span></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===== 页脚 ===== -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 L46 52 L32 42 L18 52 Z" fill="#00d4ff"/></svg>
+      <span>星际猎手 · 飞机大战</span>
+    </div>
+    <p class="footer-links">
+      <a href="https://github.com/gzdyj/feijidazhan" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/gzdyj/feijidazhan/blob/master/README.md" target="_blank" rel="noopener">README</a>
+      <a href="#deploy">部署指南</a>
+    </p>
+    <p class="footer-note">© <span id="year">2026</span> 星际猎手 · 基于 HTML5 Canvas 开发 · MIT License · 本站为游戏官方主页</p>
+  </div>
+</footer>
+
+<!-- ===== 试玩弹窗 ===== -->
+<div class="modal" id="demoModal" role="dialog" aria-modal="true" aria-label="在线试玩">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-panel">
+    <div class="modal-head">
+      <span>🎮 星际猎手 · 在线试玩</span>
+      <button class="modal-close" data-close aria-label="关闭">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-loader" id="demoLoader">
+        <div class="spinner"></div>
+        <p>正在从 GitHub 加载最新版本…</p>
+      </div>
+      <div class="modal-fallback" id="demoFallback" hidden>
+        <p>😅 试玩版加载失败，请检查网络后重试。</p>
+        <a class="btn btn-primary" href="https://github.com/gzdyj/feijidazhan" target="_blank" rel="noopener">前往 GitHub 查看源码</a>
+      </div>
+      <iframe id="demoFrame" title="星际猎手游戏试玩" sandbox="allow-scripts allow-same-origin" hidden></iframe>
+    </div>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+</body>
+</html>
