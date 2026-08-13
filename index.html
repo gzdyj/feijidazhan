@@ -323,7 +323,7 @@ var Audio = (function(){
 var Game = (function(){
   var canvas, ctx, W, H;
   var player, bullets=[], enemies=[], particles=[], stars=[], powerups=[];
-  var score=0, kills=0, wave=1, coins=0, lives=3, maxLives=5;
+  var score=0, kills=0, wave=1, coins=0, lives=1, maxLives=5;  // 致死模式：单命
   var running=false, paused=false, gameOver=false;
   var frameId=null, spawnTimer=0, waveEnemiesLeft=0, bossActive=false;
   var mouseX=0, mouseY=0, keys={}, weaponLevel=0, shieldActive=false;
@@ -365,7 +365,7 @@ var Game = (function(){
   ];
   var powerupTypes = [
     // 即时道具 instant
-    {id:'life',name:'生命',icon:'❤️',category:'instant',effect:'life',dur:0,desc:'生命+1',color:'#ff4757'},
+    {id:'life',name:'生命',icon:'❤️',category:'instant',effect:'life',dur:0,desc:'恢复1生命值',color:'#ff4757'},
     {id:'coin',name:'金币',icon:'🪙',category:'instant',effect:'coin',dur:0,desc:'+10金币',color:'#ffd700'},
     {id:'recharge',name:'炸弹补给',icon:'💣',category:'instant',effect:'recharge',dur:0,desc:'重置必杀技冷却',color:'#ff6b81'},
     // 持续增益 buff (dur 单位：帧, 60fps)
@@ -569,11 +569,13 @@ var Game = (function(){
     document.getElementById('shopScreen')&&document.getElementById('shopScreen').classList.remove('active');
     document.getElementById('settingsScreen')&&document.getElementById('settingsScreen').classList.remove('active');
     var initShield = (levelBonuses.startShield||false) || boughtShield;
-    player = {x:W/2,y:H-80,w:30,h:36,hp:ships[currentShip].hp+(levelBonuses.extraLife||0),maxHp:ships[currentShip].hp+(levelBonuses.extraLife||0),speed:ships[currentShip].speed*(levelBonuses.speed||1)*(boughtBoost?1.5:1),invuln:0};
+    // 致死模式：1条命，血量=飞机血条（先锋号3点=挨3下即死），无复活
+    var baseHp = ships[currentShip].hp + (levelBonuses.extraLife||0) + (boughtLife?1:0);
+    player = {x:W/2,y:H-80,w:30,h:36,hp:baseHp,maxHp:baseHp,speed:ships[currentShip].speed*(levelBonuses.speed||1)*(boughtBoost?1.5:1),invuln:0};
     xp=0; xpToNext=100; abilityCooldown=0;
     bullets = []; enemies = []; particles = []; powerups = [];
     activeEffects = {}; inventory = [null,null,null]; clones = [];
-    score = 0; kills = 0; wave = 1; lives = 3+(boughtLife?2:0); combo = 0; comboTimer = 0;
+    score = 0; kills = 0; wave = 1; lives = 1; combo = 0; comboTimer = 0;
     waveEnemiesLeft = 5+wave*3; bossActive = false; spawnTimer = 0; weaponLevel = currentWeapon;
     shieldActive = initShield; gameOver = false; running = true; paused = false;
     UI.showHud();
@@ -886,7 +888,8 @@ var Game = (function(){
     if(hudEls.coins && hudEls.coins.textContent!==String(coins)) hudEls.coins.textContent = coins;
     if(hudEls.wave && hudEls.wave.textContent!==String(wave)) hudEls.wave.textContent = wave;
     var h = '';
-    for(var i=0;i<lives;i++) h+='❤️';
+    var hpCount = player ? player.hp : 0;
+    for(var i=0;i<hpCount;i++) h+='❤️';
     var livesStr = h||'💀';
     if(hudEls.lives && hudEls.lives.textContent!==livesStr) hudEls.lives.textContent = livesStr;
     var wStr = '🔫 '+weaponNames[weaponLevel];
@@ -1272,7 +1275,7 @@ var Game = (function(){
 
   function applyInstant(effect){
     if(effect==='life'){
-      lives = Math.min(maxLives, lives+1);
+      if(player) player.hp = Math.min(player.maxHp, player.hp+1);
     }else if(effect==='coin'){
       coins += 10;
       UI.updateCoins();
@@ -2023,7 +2026,7 @@ var UI = (function(){
     }else if(tab==='道具'){
       var li=Game.getBought('life'), sh=Game.getBought('shield'), bo=Game.getBought('boost');
       items = [
-        '<div class="item-card"><div class="icon">❤️</div><div class="info"><div class="name">额外生命</div><div class="desc">开局+2生命</div>'+(li?'<div class="owned">✅ 已拥有</div>':'')+'</div><button class="buy-btn '+(li?'owned':'buy')+'" onclick="UI.buyLife()">'+(li?'已拥有':'🪙 200')+'</button></div>',
+        '<div class="item-card"><div class="icon">❤️</div><div class="info"><div class="name">额外生命</div><div class="desc">开局生命值+1</div>'+(li?'<div class="owned">✅ 已拥有</div>':'')+'</div><button class="buy-btn '+(li?'owned':'buy')+'" onclick="UI.buyLife()">'+(li?'已拥有':'🪙 200')+'</button></div>',
         '<div class="item-card"><div class="icon">🛡️</div><div class="info"><div class="name">初始护盾</div><div class="desc">开局带护盾</div>'+(sh?'<div class="owned">✅ 已拥有</div>':'')+'</div><button class="buy-btn '+(sh?'owned':'buy')+'" onclick="UI.buyShield()">'+(sh?'已拥有':'🪙 150')+'</button></div>',
         '<div class="item-card"><div class="icon">⚡</div><div class="info"><div class="name">开局加速</div><div class="desc">开局速度+50%</div>'+(bo?'<div class="owned">✅ 已拥有</div>':'')+'</div><button class="buy-btn '+(bo?'owned':'buy')+'" onclick="UI.buyBoost()">'+(bo?'已拥有':'🪙 100')+'</button></div>'
       ];
