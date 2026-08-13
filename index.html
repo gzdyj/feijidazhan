@@ -528,7 +528,7 @@ var Game = (function(){
     bullets = []; enemies = []; particles = []; powerups = [];
     activeEffects = {}; inventory = [null,null,null]; clones = [];
     score = 0; kills = 0; wave = 1; lives = 3+(boughtLife?2:0); combo = 0; comboTimer = 0;
-    waveEnemiesLeft = 5; bossActive = false; spawnTimer = 0; weaponLevel = currentWeapon;
+    waveEnemiesLeft = 5+wave*3; bossActive = false; spawnTimer = 0; weaponLevel = currentWeapon;
     shieldActive = initShield; gameOver = false; running = true; paused = false;
     UI.showHud();
     Audio.click();
@@ -670,10 +670,12 @@ var Game = (function(){
           if(eb.y>H||eb.y<-20||eb.x<-20||eb.x>W+20){ e.bullets.splice(k,1); continue; }
           if(player && player.hp>0){
             var ddx=eb.x-player.x, ddy=eb.y-player.y;
-            var r=(eb.sz||3)+16;
+            var r=(eb.sz||3)+22;
             if(Math.sqrt(ddx*ddx+ddy*ddy)<r){
-              hitPlayer();
-              e.bullets.splice(k,1);
+              if(player.invuln<=0){  // 无敌帧期间子弹穿过，不吞弹
+                hitPlayer();
+                e.bullets.splice(k,1);
+              }
             }
           }
         }
@@ -767,7 +769,7 @@ var Game = (function(){
     // spawning
     if(!bossActive){
       spawnTimer++;
-      var spawnRate = Math.max(12,50-wave*2);
+      var spawnRate = Math.max(10,44-wave*4);  // 前期过后立即加快
       if(spawnTimer>=spawnRate && waveEnemiesLeft>0){
         spawnEnemy();
         spawnTimer=0;
@@ -783,7 +785,7 @@ var Game = (function(){
         UI.showNotif('⚠️ BOSS 来袭！','danger');
       }else{
         wave++;
-        waveEnemiesLeft = 5+wave*2;
+        waveEnemiesLeft = 5+wave*3;
         UI.showNotif('⚔️ 第 '+wave+' 波','');
         Audio.click();
       }
@@ -798,7 +800,7 @@ var Game = (function(){
       if(!hasBoss){ bossActive=false;
         document.getElementById('bossBar').style.display = 'none';
         wave++;
-        waveEnemiesLeft = 5+wave*2;
+        waveEnemiesLeft = 5+wave*3;
         Audio.coin();
         coins+=50;
         UI.updateCoins();
@@ -876,14 +878,14 @@ var Game = (function(){
       {type:'s',r:22,hp:3,speed:0.2,color:'#00d4ff',score:250}
     ];
     var t = types[Math.floor(Math.random()*types.length)];
-    if(wave>3&&Math.random()<0.2) t=types[3];
-    if(wave>7&&Math.random()<0.15) t=types[4];
-    if(wave>5&&Math.random()<0.25) t=types[1];
+    if(wave>2&&Math.random()<0.25) t=types[3];
+    if(wave>6&&Math.random()<0.2) t=types[4];
+    if(wave>4&&Math.random()<0.3) t=types[1];
     if(enemies.length>32) return;  // 上限，防止后期敌机堆积
     enemies.push({
       x:Math.random()*(W-60)+30, y:-30,
       r:t.r, hp:t.hp+(Math.floor(wave/5)), maxHp:t.hp+(Math.floor(wave/5)),
-      speed:t.speed+Math.random()*0.5, color:t.color, score:t.score,
+      speed:t.speed+Math.random()*0.5+Math.min(wave*0.05,1.5), color:t.color, score:t.score,
       boss:false, bullets:[]
     });
     waveEnemiesLeft--;
@@ -891,7 +893,7 @@ var Game = (function(){
 
   
   function spawnBoss(){
-    var bossHp = 30 + wave * 5;
+    var bossHp = 30 + wave * 6;
     enemies.push({
       x:W/2, y:-60, r:45, hp:bossHp, maxHp:bossHp,
       speed:0.8, color:'#ff4757', score:2000,
@@ -916,7 +918,7 @@ var Game = (function(){
     }
     if(e.state === 'pause'){
       e.x += Math.cos(e.stateTimer*0.025)*1.2;
-      if(e.stateTimer > 50){
+      if(e.stateTimer > 40){  // BOSS 攻击节奏加快
         e.phase = (e.phase+1)%4;
         if(e.phase===0) e.state='aim';
         else if(e.phase===1) e.state='spread';
@@ -975,7 +977,7 @@ var Game = (function(){
 
   function bossSpread(e){
     if(e.bullets.length>140) e.bullets.splice(0,40);
-    for(var i=0;i<12;i++){
+    for(var i=0;i<16;i++){
       var a = i*Math.PI/6 + e.stateTimer*0.05;
       e.bullets.push({x:e.x, y:e.y, vx:Math.cos(a)*3.5, vy:Math.sin(a)*3.5, sz:3, col:'#a855f7', glow:'#c084fc'});
     }
@@ -983,9 +985,9 @@ var Game = (function(){
 
   function bossCross(e){
     if(e.bullets.length>140) e.bullets.splice(0,40);
-    var dirs = [0, Math.PI/4, Math.PI/2, 3*Math.PI/4, Math.PI, 5*Math.PI/4, 3*Math.PI/2, 7*Math.PI/4];
-    for(var i=0;i<dirs.length;i++){
-      e.bullets.push({x:e.x+Math.cos(dirs[i])*20, y:e.y+Math.sin(dirs[i])*20, vx:Math.cos(dirs[i])*3, vy:Math.sin(dirs[i])*3, sz:4, col:'#00d4ff', glow:'#00ff88'});
+    for(var i=0;i<10;i++){
+      var a = i*Math.PI/5;
+      e.bullets.push({x:e.x+Math.cos(a)*20, y:e.y+Math.sin(a)*20, vx:Math.cos(a)*3, vy:Math.sin(a)*3, sz:4, col:'#00d4ff', glow:'#00ff88'});
     }
   }
 
@@ -1024,10 +1026,10 @@ var Game = (function(){
   }
 
   function hitPlayer(){
-    if(!player || player.invuln>0 || shieldActive) return;
+    if(!player || player.invuln>0) return;
+    if(shieldActive){ shieldActive = false; return; }  // 护盾挡下一次伤害并破碎
     player.hp--;
     player.invuln = 30;
-    if(shieldActive) shieldActive = false;
     if(player.hp<=0){
       lives--;
       if(lives<=0){
