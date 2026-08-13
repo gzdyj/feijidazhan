@@ -48,6 +48,7 @@ docker run -d -p 8080:80 --name feijidazhan smithgz/feijidazhan:latest
 - 毛玻璃面板（Glassmorphism）
 - 粒子爆炸特效 + 舰船辉光
 - 霓虹风格 UI 配色
+- 高分屏适配：devicePixelRatio 高清渲染 + 帧率自适应画质降级（低端机不掉帧）
 
 ### 盈利系统
 - 看广告复活 — 战败后观看激励视频复活
