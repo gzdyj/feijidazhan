@@ -659,8 +659,8 @@ var Game = (function(){
           if(e.hp<=0){
             killEnemy(e,i);
           }
-          if(activeEffects.pierce>0){
-            // 穿透弹：不删除子弹，继续检测下一个敌机
+          if(activeEffects.pierce>0 || b2.wt==='laser'){
+            // 穿透弹/激光：不删除子弹，继续穿透命中下一个敌机
           }else{
             bullets.splice(i,1);
             break;
@@ -1431,45 +1431,45 @@ var Game = (function(){
     ctx.shadowBlur = 0;
     var eng = s.engine || 'single';
     var trail = s.trail || s.color;
-    var glow = hexToRgba(trail, 0.65*pulse);
+    var glow = hexToRgba(trail, 0.8*pulse);
     var fade = hexToRgba(trail, 0);
     if(eng==='single'){
-      var glw = ctx.createRadialGradient(px,py+16,2,px,py+16,12);
+      var glw = ctx.createRadialGradient(px,py+16,2,px,py+16,17);
       glw.addColorStop(0,glow); glw.addColorStop(1,fade);
       ctx.fillStyle = glw;
-      ctx.beginPath(); ctx.arc(px,py+16,12,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(px,py+16,17,0,Math.PI*2); ctx.fill();
     }else if(eng==='dual'){
       [-9,9].forEach(function(dx){
-        var glw = ctx.createRadialGradient(px+dx,py+16,2,px+dx,py+16,9);
+        var glw = ctx.createRadialGradient(px+dx,py+16,2,px+dx,py+16,13);
         glw.addColorStop(0,glow); glw.addColorStop(1,fade);
         ctx.fillStyle = glw;
-        ctx.beginPath(); ctx.arc(px+dx,py+16,9,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px+dx,py+16,13,0,Math.PI*2); ctx.fill();
       });
     }else if(eng==='quad'){
       [-15,-5,5,15].forEach(function(dx){
-        var glw = ctx.createRadialGradient(px+dx,py+18,2,px+dx,py+18,7);
+        var glw = ctx.createRadialGradient(px+dx,py+18,2,px+dx,py+18,10);
         glw.addColorStop(0,glow); glw.addColorStop(1,fade);
         ctx.fillStyle = glw;
-        ctx.beginPath(); ctx.arc(px+dx,py+18,7,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px+dx,py+18,10,0,Math.PI*2); ctx.fill();
       });
     }else if(eng==='stealth'){
-      var glw = ctx.createLinearGradient(px,py+12,px,py+34);
+      var glw = ctx.createLinearGradient(px,py+12,px,py+38);
       glw.addColorStop(0,glow); glw.addColorStop(1,fade);
       ctx.fillStyle = glw;
-      ctx.fillRect(px-6,py+12,12,22);
+      ctx.fillRect(px-8,py+12,16,26);
     }else if(eng==='flame'){
-      var g1 = hexToRgba('#ff8c00',0.85*pulse);
-      var g2 = hexToRgba('#ff4757',0.5*pulse);
+      var g1 = hexToRgba('#ff8c00',0.9*pulse);
+      var g2 = hexToRgba('#ff4757',0.55*pulse);
       var g3 = hexToRgba('#ff4757',0);
-      var glw = ctx.createLinearGradient(px,py+14,px,py+42);
+      var glw = ctx.createLinearGradient(px,py+14,px,py+48);
       glw.addColorStop(0,g1); glw.addColorStop(0.5,g2); glw.addColorStop(1,g3);
       ctx.fillStyle = glw;
       ctx.beginPath();
-      ctx.moveTo(px-10,py+14);
-      ctx.lineTo(px-4,py+38+Math.sin(timer*0.5)*3);
-      ctx.lineTo(px,py+30);
-      ctx.lineTo(px+4,py+38+Math.cos(timer*0.5)*3);
-      ctx.lineTo(px+10,py+14);
+      ctx.moveTo(px-12,py+14);
+      ctx.lineTo(px-5,py+44+Math.sin(timer*0.5)*4);
+      ctx.lineTo(px,py+34);
+      ctx.lineTo(px+5,py+44+Math.cos(timer*0.5)*4);
+      ctx.lineTo(px+12,py+14);
       ctx.closePath();
       ctx.fill();
     }
@@ -1715,40 +1715,53 @@ var Game = (function(){
       }
       ctx.shadowBlur = 0;
     }
-    // bullets
+    // bullets（武器特效差异化：一眼可辨）
     for(var i=0;i<bullets.length;i++){
       var b2=bullets[i];
       var wt = b2.wt||'single';
       var bc = b2.col||'#00d4ff';
       ctx.shadowColor = bc;
-      SB(wt==='laser'?18:9);
-      ctx.fillStyle = bc;
+      SB(wt==='laser'?20:9);
       if(wt==='laser'){
-        // 激光：红色长条强光
-        ctx.fillRect(b2.x-3,b2.y-16,6,32);
-        ctx.globalAlpha=0.35;
-        ctx.fillRect(b2.x-5,b2.y-16,10,32);
-        ctx.globalAlpha=1;
+        // 激光：粗壮光束，白色核心+红色辉光，贯通感
+        ctx.fillStyle = bc;
+        ctx.fillRect(b2.x-4,b2.y-20,8,40);
+        var lg2=ctx.createLinearGradient(b2.x-8,b2.y-20,b2.x+8,b2.y-20);
+        lg2.addColorStop(0,'rgba(255,77,109,0)');
+        lg2.addColorStop(0.5,'rgba(255,77,109,0.55)');
+        lg2.addColorStop(1,'rgba(255,77,109,0)');
+        ctx.fillStyle=lg2;
+        ctx.fillRect(b2.x-8,b2.y-20,16,40);
+        ctx.fillStyle='rgba(255,255,255,0.95)';
+        ctx.fillRect(b2.x-1.5,b2.y-20,3,40);
       }else if(wt==='spread'){
-        // 散射：紫色小弹
-        ctx.beginPath();
-        ctx.arc(b2.x,b2.y,4,0,Math.PI*2);
-        ctx.fill();
+        // 散射：大号紫色光弹+辉光晕
+        ctx.fillStyle = bc;
+        ctx.beginPath(); ctx.arc(b2.x,b2.y,6,0,Math.PI*2); ctx.fill();
+        ctx.globalAlpha=0.35;
+        ctx.beginPath(); ctx.arc(b2.x,b2.y,11,0,Math.PI*2); ctx.fill();
+        ctx.globalAlpha=1;
       }else if(wt==='barrage'){
-        // 弹幕：金色弹+拖尾
-        ctx.beginPath();
-        ctx.arc(b2.x,b2.y,5,0,Math.PI*2);
-        ctx.fill();
-        ctx.globalAlpha=0.4;
-        ctx.fillRect(b2.x-2,b2.y,4,10);
+        // 弹幕：金色光弹+长拖尾
+        ctx.fillStyle = bc;
+        ctx.beginPath(); ctx.arc(b2.x,b2.y,5,0,Math.PI*2); ctx.fill();
+        var bg2=ctx.createLinearGradient(b2.x,b2.y,b2.x,b2.y+18);
+        bg2.addColorStop(0,'rgba(255,209,102,0.85)');
+        bg2.addColorStop(1,'rgba(255,209,102,0)');
+        ctx.fillStyle=bg2;
+        ctx.globalAlpha=0.5;
+        ctx.fillRect(b2.x-2.5,b2.y,5,18);
         ctx.globalAlpha=1;
       }else{
-        // single/dual：渐变光弹
+        // single/dual：亮弹+尾迹
         var grad = ctx.createLinearGradient(b2.x-3,b2.y-8,b2.x+3,b2.y+8);
         grad.addColorStop(0,bc);
         grad.addColorStop(1,hexToRgba(bc,0.4));
         ctx.fillStyle = grad;
         ctx.fillRect(b2.x-3,b2.y-8,6,14);
+        ctx.globalAlpha=0.35;
+        ctx.fillRect(b2.x-1.5,b2.y+6,3,10);
+        ctx.globalAlpha=1;
       }
       ctx.shadowBlur = 0;
     }
